@@ -1,5 +1,8 @@
 module Unfolding3D
 
-# Write your package code here.
+include("auxiliar_functions.jl")
+include("main_functions.jl")
+
+export unfold, unfold_error
 
 end
