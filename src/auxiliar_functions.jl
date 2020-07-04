@@ -21,10 +21,10 @@ function a1_normals(ref_surf)
 
 	ref_normals = zeros(Float64,size(ref_surf))
 	bad_id = Int64[]
-	
+
 	for i in 1:length(idxs)
-	
-		M = fit(PCA, ref_surf[:,idxs[i]], maxoutdim=3, pratio=1)  
+
+		M = fit(PCA, ref_surf[:,idxs[i]], maxoutdim=3, pratio=1)
 		ev = projection(M)
 
 		if size(ev)[2]>=3
@@ -36,7 +36,7 @@ function a1_normals(ref_surf)
 		#	append!(bad_id,i)
 		end
 	end
-	
+
 	# Iterate through all normals and check for consistency
 	ok = false
 	pre_loop = Array(1:length(idxs))
@@ -56,10 +56,10 @@ function a1_normals(ref_surf)
 			ok=true
 		end
 	end
-	
-	missing = setdiff(pre_loop,visited)
-	if length(missing)>0
-		println("bad",length(missing))
+
+	missing_pts = setdiff(pre_loop,visited)
+	if length(missing_pts)>0
+		println("bad",length(missing_pts))
 		#deal with not visited points
 	end
 
@@ -71,7 +71,7 @@ function a1_normals(ref_surf)
 		CD = colwise(CosineDist(), X, Y)
 		ref_normals[:,idxs[i][CD .> 1]] .*= -1.0
 	end
-	
+
 	return ref_normals
 end
 
@@ -91,9 +91,9 @@ function a3_xyzguess(ref_surf_coords, ref_surf_tcoords, ref_surf_normals, coords
 
     tree = BallTree(ref_surf_coords)
 	idxs, dists = knn(tree, coords_to_allocate, 1, true)
-	
+
 	xyzguess = zeros(Float64,size(coords_to_allocate))
-	
+
 	for x in 1:length(idxs)
 		filt = idxs[x][1]
 		refs_coords = ref_surf_coords[:,filt]
@@ -105,11 +105,11 @@ function a3_xyzguess(ref_surf_coords, ref_surf_tcoords, ref_surf_normals, coords
 		else
 			xyzguess[3,x] = dists[x][1]
 		end
-		
+
 		xyzguess[1,x] = ref_surf_tcoords[1,filt[1]]
 		xyzguess[2,x] = ref_surf_tcoords[2,filt[1]]
 	end
-	
+
 	return xyzguess
 end
 
@@ -118,20 +118,20 @@ function unfold_error(true_coords, transf_coords, nneigh, max_error;main_return=
 
     tree = BallTree(true_coords)
 	idxs, dists = knn(tree, true_coords, nneigh, true)
-	
+
 	tdists = zeros(Float64,size(dists[1]))
 	bad_ids = Int[]
 	error = Float64[]
-	
+
 	for x in 1:length(idxs)
 		for y in length(idxs[x])
 			tdists[y] = euclidean(transf_coords[:,x],transf_coords[:,idxs[x][y]])
 		end
-		
+
 		tdists .-= dists[x]
 		tdists .= abs.(tdists)
 		check = findall(tdists .> max_error)
-		
+
 		if main_return==false
 			append!(error,tdists[2:end])
 		elseif length(check)>0
@@ -139,7 +139,7 @@ function unfold_error(true_coords, transf_coords, nneigh, max_error;main_return=
 			append!(bad_ids,idxs[x][check])
 		end
 	end
-	
+
 	if main_return==false
 		return error
 	else
@@ -148,4 +148,3 @@ function unfold_error(true_coords, transf_coords, nneigh, max_error;main_return=
 		return good,bad
 	end
 end
-
