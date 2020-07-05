@@ -1,4 +1,3 @@
-using CSV
 using ImageMorphology:thinning
 using NearestNeighbors
 using LightGraphs:dijkstra_shortest_paths
@@ -6,13 +5,10 @@ using SimpleWeightedGraphs
 using StatsBase
 using MultivariateStats
 using Optim
-using Distances
-using DelimitedFiles
 using LinearAlgebra
 using Random
 
 ### MAIN FUNCTIONS ###
-
 
 # Isomap
 function p1_isomap(ref_coords;neighs=16,anchor=800)
@@ -166,10 +162,10 @@ function unfold(refsurf_true_coords,input_blocks,input_samps=nothing)
 
 	# Doing Isomap to get reference surface points
 	ref_surf_transf = p1_isomap(refsurf_true_coords)
-	good, bad = unfold_error(refsurf_true_coords, ref_surf_transf, 5, 5)
+	good, bad = unfold_error(refsurf_true_coords, ref_surf_transf, 5, 5, false)
 
 	# Get points to allocate
-	xyz_finals = a3_xyzguess(refsurf_true_coords[:,good], ref_surf_transf[:,good], ref_normals[:,good], input_blocks)
+	xyz_finals = a3_xyzguess(input_blocks, refsurf_true_coords[:,good], ref_surf_transf[:,good], ref_normals[:,good])
 
 	# Allocating blocks in chunks
 	nb_chunks = 3
@@ -185,7 +181,7 @@ function unfold(refsurf_true_coords,input_blocks,input_samps=nothing)
 		if i>1
 
 			ref_ids = [ids_to_loop[x][y] for x in 1:(i-1) for y in 1:length(ids_to_loop[x])]
-			good2, bad2 = unfold_error(input_blocks[:,ref_ids], xyz_finals[:,ref_ids], 5, 5)
+			good2, bad2 = unfold_error(input_blocks[:,ref_ids], xyz_finals[:,ref_ids], 5, 5, false)
 			println("good and bad: ",length(good2)," ",length(bad2))
 
 			known_coords = hcat(known_coords,input_blocks[:,ref_ids][:,good2])
@@ -193,29 +189,18 @@ function unfold(refsurf_true_coords,input_blocks,input_samps=nothing)
 			ids_to_opt = unique(append!(Array{Int}(ids),Array{Int}(view(ref_ids,bad2))))
 		end
 
-		println("Chunk ",i,size(known_coords))
+		println("Pass ",i)
 
 		out_transf_coords = p2_opt(known_coords, known_tcoords, input_blocks[:,ids_to_opt], xyzguess=xyz_finals[:,ids_to_opt])
 		xyz_finals[:,ids_to_opt] .= out_transf_coords
-	end
-
-
-	open("out_blks.csv"; write=true) do f
-		write(f, "X,Y,Z\n")
-		writedlm(f, transpose(xyz_finals), ',')
 	end
 
 	if input_samps==nothing
 		return xyz_finals
 	else
 
-		xyz_dh_finals = a3_xyzguess(refsurf_true_coords[:,good], ref_surf_transf[:,good], ref_normals[:,good], input_samps)
-		out_dh_coords = p2_opt(input_blocks, xyz_finals, input_samps, xyzguess=xyz_dh_finals)
-
-		open("out_dh.csv"; write=true) do f
-			write(f, "X,Y,Z\n")
-			writedlm(f, transpose(out_dh_coords), ',')
-		end
+		xyz_guess = a3_xyzguess(input_samps, input_blocks, xyz_finals)
+		xyz_dh_finals = p2_opt(input_blocks, xyz_finals, input_samps, xyzguess=xyz_guess)
 
 		return xyz_finals, xyz_dh_finals
 	end

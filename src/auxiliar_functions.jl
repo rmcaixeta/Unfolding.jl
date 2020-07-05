@@ -1,15 +1,11 @@
-using CSV
-using ImageMorphology:thinning
 using NearestNeighbors
-using LightGraphs:dijkstra_shortest_paths
-using SimpleWeightedGraphs
 using StatsBase
 using MultivariateStats
-using Optim
 using Distances
 using DelimitedFiles
 using LinearAlgebra
-using Random
+using WriteVTK
+using StatsPlots
 
 
 ### AUXILIAR FUNCTIONS ###
@@ -87,34 +83,39 @@ function a2_mse_coords(x, locations, distances)
 end
 
 # Guess initial XYZ
-function a3_xyzguess(ref_surf_coords, ref_surf_tcoords, ref_surf_normals, coords_to_allocate)
+function a3_xyzguess(coords_to_allocate, ref_coords, ref_transf_coords, ref_surf_normals=nothing)
 
-    tree = BallTree(ref_surf_coords)
+    tree = BallTree(ref_coords)
 	idxs, dists = knn(tree, coords_to_allocate, 1, true)
 
-	xyzguess = zeros(Float64,size(coords_to_allocate))
+	if ref_surf_normals==nothing
+		filt = [idxs[x][1] for x in 1:length(idxs)]
+		return ref_transf_coords[:,filt]
+	else
+		xyzguess = zeros(Float64,size(coords_to_allocate))
 
-	for x in 1:length(idxs)
-		filt = idxs[x][1]
-		refs_coords = ref_surf_coords[:,filt]
-		refn_coords = ref_surf_normals[:,filt]
-		ref_vect = coords_to_allocate[:,x]-refs_coords
-		dotn_val = dot(refn_coords,ref_vect)
-		if dotn_val<0
-			xyzguess[3,x] = -1*dists[x][1]
-		else
-			xyzguess[3,x] = dists[x][1]
+		for x in 1:length(idxs)
+			filt = idxs[x][1]
+			refs_coords = ref_coords[:,filt]
+			refn_coords = ref_surf_normals[:,filt]
+			ref_vect = coords_to_allocate[:,x]-refs_coords
+			dotn_val = dot(refn_coords,ref_vect)
+			if dotn_val<0
+				xyzguess[3,x] = -1*dists[x][1]
+			else
+				xyzguess[3,x] = dists[x][1]
+			end
+
+			xyzguess[1,x] = ref_transf_coords[1,filt[1]]
+			xyzguess[2,x] = ref_transf_coords[2,filt[1]]
 		end
 
-		xyzguess[1,x] = ref_surf_tcoords[1,filt[1]]
-		xyzguess[2,x] = ref_surf_tcoords[2,filt[1]]
+		return xyzguess
 	end
-
-	return xyzguess
 end
 
 # Check error
-function unfold_error(true_coords, transf_coords, nneigh, max_error;main_return=true)
+function unfold_error(true_coords, transf_coords, nneigh, max_error=5, outfunc=true; plotname="error")
 
     tree = BallTree(true_coords)
 	idxs, dists = knn(tree, true_coords, nneigh, true)
@@ -132,7 +133,7 @@ function unfold_error(true_coords, transf_coords, nneigh, max_error;main_return=
 		tdists .= abs.(tdists)
 		check = findall(tdists .> max_error)
 
-		if main_return==false
+		if outfunc==true
 			append!(error,tdists[2:end])
 		elseif length(check)>0
 			push!(bad_ids,x)
@@ -140,11 +141,34 @@ function unfold_error(true_coords, transf_coords, nneigh, max_error;main_return=
 		end
 	end
 
-	if main_return==false
+	if outfunc==true
+		fig = boxplot(["Unfolding error"], error)
+		savefig(plotname)
 		return error
 	else
 		bad = unique(bad_ids)
 		good = setdiff(Array(1:size(true_coords)[2]),bad)
 		return good,bad
 	end
+end
+
+function data_to_csv(coords,outname,colnames)
+
+	out = length(size(coords))==1 ? coords : coords'
+	open(string(outname,".csv"); write=true) do f
+		write(f, string(join(colnames,","),"\n"))
+		writedlm(f, out, ',')
+	end
+end
+
+function data_to_vtk(coords,outname,extra_props=nothing)
+	verts = [MeshCell( VTKCellTypes.VTK_VERTEX, [i]) for i in 1:size(coords)[2] ]
+	outfiles = vtk_grid(outname,coords,(verts)) do vtk
+		if extra_props!=nothing
+			for (name,prop) in extra_props
+				vtk[name] = prop
+			end
+		end
+	end
+
 end
