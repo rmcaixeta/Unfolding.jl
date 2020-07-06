@@ -7,6 +7,7 @@ using MultivariateStats
 using Optim
 using LinearAlgebra
 using Random
+#using Mmap
 
 ### MAIN FUNCTIONS ###
 
@@ -27,18 +28,20 @@ function p1_isomap(ref_coords;neighs=16,anchor=800)
     end
 
     g = SimpleWeightedGraph(convert(Array{Int64,1}, sources), convert(Array{Int64,1}, destinations), weights)
-    anchor_ids = sort!(sample(1:length(idxs), anchor, replace=false))
 
-    DM = zeros(Float64,length(idxs),length(idxs))
-    for i in 1:length(idxs)
-        d = dijkstra_shortest_paths(g,i).dists
-        for j in 1:length(idxs)
-            DM[i,j] = d[j]
-        end
-    end
+	use_anchors = length(idxs)>anchor
+    anchor_ids = use_anchors ? sort!(sample(1:length(idxs), anchor, replace=false)) : collect(1:length(idxs))
+	anchor = minimum([anchor,length(idxs)])
 
+	ADM = zeros(Float64,(anchor,anchor))
+	for i in 1:anchor
+	    d = dijkstra_shortest_paths(g,anchor_ids[i]).dists
+	    for j in 1:anchor
+	        ADM[i,j] = d[anchor_ids[j]]
+	    end
+	end
 
-    G = dmat2gram(DM[anchor_ids,anchor_ids])
+    G = dmat2gram(ADM)
     F = eigen(G)
     EM = (F.vectors[:,sortperm(F.values,rev=true)])[:,[1,2]]
     sq_eigenvals = sort(F.values,rev=true)[1:2].^0.5
@@ -46,25 +49,33 @@ function p1_isomap(ref_coords;neighs=16,anchor=800)
     anchor_coords = EM*AM
     G = nothing
 
-	# allocate another points
-	other_ids = setdiff(Array(1:length(idxs)),anchor_ids)
-	other_coords = zeros(Float64,(length(other_ids),2))
-	M1 = transpose(EM)
-	M1[1,:] ./= sq_eigenvals[1]
-	M1[2,:] ./= sq_eigenvals[2]
-	M3 = zeros(Float64,anchor,1)
-	mean!(M3,DM[anchor_ids,anchor_ids].^2)
-
-	for i in 1:length(other_ids)
-		M2 = DM[anchor_ids,other_ids[i]].^2
-		out = -0.5*M1*(M2-M3)
-		other_coords[i,1] = out[1,1]
-		other_coords[i,2] = out[2,1]
-	end
-
 	transf_ref_coords = zeros(Float64,size(ref_coords))
 	transf_ref_coords[1:2,anchor_ids] .= transpose(anchor_coords)
-	transf_ref_coords[1:2,other_ids] .= transpose(other_coords)
+
+	if use_anchors
+		# allocate another points
+		other_ids = setdiff(Array(1:length(idxs)),anchor_ids)
+		other_coords = zeros(Float64,(length(other_ids),2))
+		M1 = transpose(EM)
+		M1[1,:] ./= sq_eigenvals[1]
+		M1[2,:] ./= sq_eigenvals[2]
+		M3 = zeros(Float64,anchor,1)
+		mean!(M3,ADM.^2)
+
+		for i in 1:length(other_ids)
+			M2 = zeros(Float64,(anchor,1))
+			d = dijkstra_shortest_paths(g,other_ids[i]).dists
+			for x in 1:anchor
+				M2[x,1] = d[anchor_ids[x]]^2
+			end
+			out = -0.5*M1*(M2-M3)
+			other_coords[i,1] = out[1,1]
+			other_coords[i,2] = out[2,1]
+		end
+
+		transf_ref_coords[1:2,other_ids] .= transpose(other_coords)
+	end
+
     return transf_ref_coords
 end
 
@@ -107,14 +118,14 @@ function ref_surface_from_blocks(blks; axis="X")
 	sec = setdiff([1,2,3],ax)
 	cells = zeros(Float64,3)
 
-	cellsize = unique([axis_coords[x]-axis_coords[x-1] for x in 2:length(axis_coords)])
-	@assert length(cellsize)==1 "Block model must have regular cell sizes"
+	cellsize = sort!(unique([axis_coords[x]-axis_coords[x-1] for x in 2:length(axis_coords)]))
+	#@assert length(cellsize)==1 "Block model must have regular cell sizes"
 	cells[ax] = cellsize[1]
 
 	for c in sec
 		coords =  sort!(unique(blks[c,:]))
-		cell_ = unique([coords[x]-coords[x-1] for x in 2:length(coords)])
-		@assert length(cell_)==1 "Block model must have regular cell sizes"
+		cell_ = sort!(unique([coords[x]-coords[x-1] for x in 2:length(coords)]))
+		#@assert length(cell_)==1 "Block model must have regular cell sizes"
 		cells[c] = cell_[1]
 	end
 
