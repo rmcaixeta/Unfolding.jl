@@ -10,26 +10,44 @@ using StatsPlots
 
 ### AUXILIAR FUNCTIONS ###
 
+# Isomap neighborhood
+function _isomap_neighbors(ref_coords, neigh_type, neigh_val)
+	tree = BallTree(ref_coords)
+	if neigh_type=="knn"
+		idxs, dists = knn(tree, ref_coords, neigh_val, true)
+		return idxs, dists
+	else
+		idxs = inrange(tree, ref_coords, neigh_val, true)
+		return idxs, nothing
+	end
+end
+
 # Get surface normals
-function a1_normals(ref_surf)
+function _normals(ref_surf)
 	tree = BallTree(ref_surf)
 	idxs, dists = knn(tree, ref_surf, 15, true)
 
 	ref_normals = zeros(Float64,size(ref_surf))
-	bad_id = Int64[]
+
+	last = nothing
 
 	for i in 1:length(idxs)
-
-		M = fit(PCA, ref_surf[:,idxs[i]], maxoutdim=3, pratio=1)
+		pcapts = standardize(ZScoreTransform, ref_surf[:,idxs[i]], dims=2, scale=false)
+		M = fit(PCA, pcapts, maxoutdim=3, pratio=1)
 		ev = projection(M)
 
 		if size(ev)[2]>=3
+			last = ev[:,3]
 			ref_normals[:,i] .= ev[:,3]
 		elseif size(ev)[2]==2
+			last = cross(ev[:,1],ev[:,2])
 			ref_normals[:,i] .= cross(ev[:,1],ev[:,2])
-		#else
-		#	ref_normals[:,i] .= [-99,-99,-99]
-		#	append!(bad_id,i)
+		else # not best way to deal with 1 PC
+			if last==nothing
+				ref_normals[:,i] .= [0.,0.,1.]
+			else
+				ref_normals[:,i] .= last
+			end
 		end
 	end
 
@@ -53,11 +71,10 @@ function a1_normals(ref_surf)
 		end
 	end
 
-	missing_pts = setdiff(pre_loop,visited)
-	if length(missing_pts)>0
-		println("bad",length(missing_pts))
-		#deal with not visited points
-	end
+	# missing_pts = setdiff(pre_loop,visited)
+	# if length(missing_pts)>0
+	# 	println("bad: ",length(missing_pts)) #deal with not visited points
+	# end
 
 	for i in unique(to_loop)
 		X = ref_normals[:,idxs[i]]
@@ -72,7 +89,7 @@ function a1_normals(ref_surf)
 end
 
 # Error function
-function a2_mse_coords(x, locations, distances)
+function _mse_coords(x, locations, distances)
     mse = 0.0
     for k in 1:length(distances)
         loc, d = [locations[:,k],distances[k]]
@@ -83,7 +100,7 @@ function a2_mse_coords(x, locations, distances)
 end
 
 # Guess initial XYZ
-function a3_xyzguess(coords_to_allocate, ref_coords, ref_transf_coords, ref_surf_normals=nothing)
+function _xyzguess(coords_to_allocate, ref_coords, ref_transf_coords, ref_surf_normals=nothing)
 
     tree = BallTree(ref_coords)
 	idxs, dists = knn(tree, coords_to_allocate, 1, true)

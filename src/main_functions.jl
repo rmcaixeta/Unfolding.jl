@@ -1,6 +1,6 @@
 using ImageMorphology:thinning
 using NearestNeighbors
-using LightGraphs:dijkstra_shortest_paths
+using LightGraphs:dijkstra_shortest_paths,connected_components
 using SimpleWeightedGraphs
 using StatsBase
 using MultivariateStats
@@ -12,25 +12,39 @@ using Random
 ### MAIN FUNCTIONS ###
 
 # Isomap
-function p1_isomap(ref_coords;neighs=16,anchor=800)
+function _isomap(ref_coords;neigh_type="knn",neigh_val=15,anchor=1500)
 
-    tree = BallTree(ref_coords)
-    idxs, dists = knn(tree, ref_coords, neighs, true)
+	@assert neigh_type in ["knn","inrange"] "Invalid neighborhood type"
+
+    idxs, dists = _isomap_neighbors(ref_coords, neigh_type, neigh_val)
 
     sources,destinations,weights = [Int64[],Int64[],Float64[]]
 
-    for i in 1:length(idxs)
-        for j in 2:neighs
-            push!(sources, i)
-            push!(destinations, idxs[i][j])
-            push!(weights, dists[i][j])
+	if neigh_type=="knn"
+    	for i in 1:length(idxs)
+	        for j in 2:neigh_val
+	            push!(sources, i)
+	            push!(destinations, idxs[i][j])
+	            push!(weights, dists[i][j])
+	        end
         end
-    end
+	elseif neigh_type=="inrange"
+		for i in 1:length(idxs)
+			for j in idxs[i][idxs[i].!=i]
+				push!(sources, i)
+				push!(destinations, j)
+				push!(weights, euclidean(ref_coords[:,i],ref_coords[:,j]))
+			end
+		end
+	end
 
     g = SimpleWeightedGraph(convert(Array{Int64,1}, sources), convert(Array{Int64,1}, destinations), weights)
+	comps = length(connected_components(g))
+	@assert comps==1 string("There are ",comps," subgroups of isolated vertices. Need to increase number of neighbors")
 
 	use_anchors = length(idxs)>anchor
-    anchor_ids = use_anchors ? sort!(sample(1:length(idxs), anchor, replace=false)) : collect(1:length(idxs))
+	wgt = neigh_type=="inrange" ? Weights([1/length(x) for x in idx]) : Weights([mean(x) for x in dists])
+    anchor_ids = use_anchors ? sort!(sample(1:length(idxs), wgt, anchor, replace=false)) : collect(1:length(idxs))
 	anchor = minimum([anchor,length(idxs)])
 
 	ADM = zeros(Float64,(anchor,anchor))
@@ -80,7 +94,7 @@ function p1_isomap(ref_coords;neighs=16,anchor=800)
 end
 
 # Optimization coordinates
-function p2_opt(points_known_true,points_known_transf,points_to_transf;xyzguess=[0],opt_neigh=8)
+function _opt(points_known_true,points_known_transf,points_to_transf;xyzguess=[0],opt_neigh=8)
 
     tree = BallTree(points_known_true)
     idxs, dists = knn(tree, points_to_transf, opt_neigh, true)
@@ -97,7 +111,7 @@ function p2_opt(points_known_true,points_known_transf,points_to_transf;xyzguess=
 			initial_guess = xyzguess[:,i]
 		end
 
-        opt = optimize(x->a2_mse_coords(x, locs, d), initial_guess)#, LBFGS())
+        opt = optimize(x->_mse_coords(x, locs, d), initial_guess)#, LBFGS())
 
         res = Optim.minimizer(opt)
         out_coords[:,i]=res
@@ -166,17 +180,17 @@ function ref_surface_from_blocks(blks; axis="X")
     return out_surf
 end
 
-function unfold(refsurf_true_coords,input_blocks,input_samps=nothing)
+function unfold(refsurf_true_coords,input_blocks,input_samps=nothing;neigh_type="knn",neigh_val=15)
 
 	# Getting normals
-	ref_normals = a1_normals(refsurf_true_coords)
+	ref_normals = _normals(refsurf_true_coords)
 
 	# Doing Isomap to get reference surface points
-	ref_surf_transf = p1_isomap(refsurf_true_coords)
+	ref_surf_transf = _isomap(refsurf_true_coords,neigh_type=neigh_type,neigh_val=neigh_val)
 	good, bad = unfold_error(refsurf_true_coords, ref_surf_transf, 5, 5, false)
 
 	# Get points to allocate
-	xyz_finals = a3_xyzguess(input_blocks, refsurf_true_coords[:,good], ref_surf_transf[:,good], ref_normals[:,good])
+	xyz_finals = _xyzguess(input_blocks, refsurf_true_coords[:,good], ref_surf_transf[:,good], ref_normals[:,good])
 
 	# Allocating blocks in chunks
 	nb_chunks = 3
@@ -202,7 +216,7 @@ function unfold(refsurf_true_coords,input_blocks,input_samps=nothing)
 
 		println("Pass ",i)
 
-		out_transf_coords = p2_opt(known_coords, known_tcoords, input_blocks[:,ids_to_opt], xyzguess=xyz_finals[:,ids_to_opt])
+		out_transf_coords = _opt(known_coords, known_tcoords, input_blocks[:,ids_to_opt], xyzguess=xyz_finals[:,ids_to_opt])
 		xyz_finals[:,ids_to_opt] .= out_transf_coords
 	end
 
@@ -210,8 +224,8 @@ function unfold(refsurf_true_coords,input_blocks,input_samps=nothing)
 		return xyz_finals
 	else
 
-		xyz_guess = a3_xyzguess(input_samps, input_blocks, xyz_finals)
-		xyz_dh_finals = p2_opt(input_blocks, xyz_finals, input_samps, xyzguess=xyz_guess)
+		xyz_guess = _xyzguess(input_samps, input_blocks, xyz_finals)
+		xyz_dh_finals = _opt(input_blocks, xyz_finals, input_samps, xyzguess=xyz_guess)
 
 		return xyz_finals, xyz_dh_finals
 	end
