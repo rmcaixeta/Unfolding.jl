@@ -1,4 +1,4 @@
-module Unfolding3D
+module Unfolding
 
 include("auxiliar_functions.jl")
 include("main_functions.jl")

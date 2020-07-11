@@ -1,6 +1,6 @@
-using Unfolding3D
+using Unfolding
 using Test
 
-@testset "Unfolding3D.jl" begin
+@testset "Unfolding.jl" begin
     # Write your tests here.
 end
