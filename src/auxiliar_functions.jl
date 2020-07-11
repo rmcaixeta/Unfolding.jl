@@ -6,9 +6,25 @@ using DelimitedFiles
 using LinearAlgebra
 using WriteVTK
 using StatsPlots
+using Clustering
 
 
 ### AUXILIAR FUNCTIONS ###
+
+# Average duplicate points
+function _remove_duplicates(coords,tol=0.5)
+	groups = [union(x.core_indices,x.boundary_indices) for x in dbscan(coords, tol)]
+	outcoords = zeros(Float64,3,length(groups))
+	for g in 1:length(groups)
+		idx = groups[g]
+		if length(idx)==1
+			outcoords[:,g] .= dropdims(coords[:,idx],dims=2)
+		else
+			outcoords[:,g] .= mean!(outcoords[:,g],coords[:,idx])
+		end
+	end
+	return outcoords
+end
 
 # Isomap neighborhood
 function _isomap_neighbors(ref_coords, neigh_type, neigh_val)
@@ -23,9 +39,9 @@ function _isomap_neighbors(ref_coords, neigh_type, neigh_val)
 end
 
 # Get surface normals
-function _normals(ref_surf)
+function _normals(ref_surf,nneigh)
 	tree = BallTree(ref_surf)
-	idxs, dists = knn(tree, ref_surf, 15, true)
+	idxs, dists = knn(tree, ref_surf, nneigh, true)
 
 	ref_normals = zeros(Float64,size(ref_surf))
 

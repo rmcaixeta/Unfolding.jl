@@ -123,67 +123,71 @@ function _opt(points_known_true,points_known_transf,points_to_transf;xyzguess=[0
 end
 
 # Skeletonization
-function ref_surface_from_blocks(blks; axis="X")
+function ref_surface_from_blocks(blks; axis=["X","Y","Z"])
 
+	if typeof(axis)==String
+		axis = [axis]
+	end
 	coord_ids = Dict("X"=>1, "Y"=>2, "Z"=>3)
-	@assert axis in ["X","Y","Z"] "Invalid axis"
-	ax = coord_ids[axis]
-    axis_coords = sort!(unique(blks[ax,:]))
-	sec = setdiff([1,2,3],ax)
+	ref = [Float64[],Float64[],Float64[]]
 	cells = zeros(Float64,3)
-
-	cellsize = sort!(unique([axis_coords[x]-axis_coords[x-1] for x in 2:length(axis_coords)]))
-	#@assert length(cellsize)==1 "Block model must have regular cell sizes"
-	cells[ax] = cellsize[1]
-
-	for c in sec
+	for c in 1:3
 		coords =  sort!(unique(blks[c,:]))
 		cell_ = sort!(unique([coords[x]-coords[x-1] for x in 2:length(coords)]))
 		#@assert length(cell_)==1 "Block model must have regular cell sizes"
 		cells[c] = cell_[1]
 	end
 
-    ref = [Float64[],Float64[],Float64[]]
+	#@assert axis in ["X","Y","Z"] "Invalid axis"
+	for c in axis
+		ax = coord_ids[c]
+	    axis_coords = sort!(unique(blks[ax,:]))
+		sec = setdiff([1,2,3],ax)
 
-    for s in axis_coords
-        section = blks[:,blks[ax,:] .== s]
+	    for s in axis_coords
+	        section = blks[:,blks[ax,:] .== s]
 
-        min_i = minimum(section[sec[1],:])
-        min_j = minimum(section[sec[2],:])
-        i = section[sec[1],:] .- min_i
-        j = section[sec[2],:] .- min_j
+	        min_i = minimum(section[sec[1],:])
+	        min_j = minimum(section[sec[2],:])
+	        i = section[sec[1],:] .- min_i
+	        j = section[sec[2],:] .- min_j
 
-        i = convert(Array{Int,1}, i/cells[sec[1]]) .+ 1
-        j = convert(Array{Int,1}, j/cells[sec[2]]) .+ 1
+	        i = convert(Array{Int,1}, i/cells[sec[1]]) .+ 1
+	        j = convert(Array{Int,1}, j/cells[sec[2]]) .+ 1
 
-        img = zeros(Bool,maximum(i)+1,maximum(j)+1)
+	        img = zeros(Bool,maximum(i)+1,maximum(j)+1)
 
-        for x in 1:length(i)
-            img[i[x],j[x]]=true
-        end
+	        for x in 1:length(i)
+	            img[i[x],j[x]]=true
+	        end
 
-        img = thinning(img)
+	        img = thinning(img)
 
-        for x in 1:length(i)
-            if img[i[x],j[x]]==true
-                io = (i[x]-1)*cells[sec[1]]+min_i
-                jo = (j[x]-1)*cells[sec[2]]+min_j
-                push!(ref[ax], s)
-                push!(ref[sec[1]], io)
-                push!(ref[sec[2]], jo)
-            end
-        end
-    end
+	        for x in 1:length(i)
+	            if img[i[x],j[x]]==true
+	                io = (i[x]-1)*cells[sec[1]]+min_i
+	                jo = (j[x]-1)*cells[sec[2]]+min_j
+	                push!(ref[ax], s)
+	                push!(ref[sec[1]], io)
+	                push!(ref[sec[2]], jo)
+	            end
+	        end
+	    end
+	end
+	out_surf = hcat(ref[1],ref[2],ref[3])'
 
-	out_surf = transpose(hcat(ref[1],ref[2],ref[3]))
-
-    return out_surf
+	if length(axis)==1
+		return out_surf
+	else
+		return _remove_duplicates(out_surf)
+	end
 end
 
 function unfold(refsurf_true_coords,input_blocks,input_samps=nothing;neigh_type="knn",neigh_val=15)
 
 	# Getting normals
-	ref_normals = _normals(refsurf_true_coords)
+	normals_neigh = neigh_type=="knn" ? neigh_val : 25
+	ref_normals = _normals(refsurf_true_coords,normals_neigh)
 
 	# Doing Isomap to get reference surface points
 	ref_surf_transf = _isomap(refsurf_true_coords,neigh_type=neigh_type,neigh_val=neigh_val)
