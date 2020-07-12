@@ -7,12 +7,11 @@ using MultivariateStats
 using Optim
 using LinearAlgebra
 using Random
-#using Mmap
 
 ### MAIN FUNCTIONS ###
 
 # Isomap
-function _isomap(ref_coords;neigh_type="knn",neigh_val=15,anchor=1500)
+function _isomap(ref_coords::AbstractArray{<:Number,2};neigh_type="knn",neigh_val=15,anchor=1500)
 
 	@assert neigh_type in ["knn","inrange"] "Invalid neighborhood type"
 
@@ -64,13 +63,13 @@ function _isomap(ref_coords;neigh_type="knn",neigh_val=15,anchor=1500)
     G = nothing
 
 	transf_ref_coords = zeros(Float64,size(ref_coords))
-	transf_ref_coords[1:2,anchor_ids] .= transpose(anchor_coords)
+	transf_ref_coords[1:2,anchor_ids] .= permutedims(anchor_coords)
 
 	if use_anchors
 		# allocate another points
 		other_ids = setdiff(Array(1:length(idxs)),anchor_ids)
 		other_coords = zeros(Float64,(length(other_ids),2))
-		M1 = transpose(EM)
+		M1 = permutedims(EM)
 		M1[1,:] ./= sq_eigenvals[1]
 		M1[2,:] ./= sq_eigenvals[2]
 		M3 = zeros(Float64,anchor,1)
@@ -87,14 +86,17 @@ function _isomap(ref_coords;neigh_type="knn",neigh_val=15,anchor=1500)
 			other_coords[i,2] = out[2,1]
 		end
 
-		transf_ref_coords[1:2,other_ids] .= transpose(other_coords)
+		transf_ref_coords[1:2,other_ids] .= permutedims(other_coords)
 	end
 
     return transf_ref_coords
 end
 
 # Optimization coordinates
-function _opt(points_known_true,points_known_transf,points_to_transf;xyzguess=[0],opt_neigh=8)
+function _opt(points_known_true::AbstractArray{<:Number,2},
+	points_known_transf::AbstractArray{<:Number,2},
+	points_to_transf::AbstractArray{<:Number,2};
+	xyzguess=[0],opt_neigh=8)
 
     tree = BallTree(points_known_true)
     idxs, dists = knn(tree, points_to_transf, opt_neigh, true)
@@ -123,7 +125,8 @@ function _opt(points_known_true,points_known_transf,points_to_transf;xyzguess=[0
 end
 
 # Skeletonization
-function ref_surface_from_blocks(blks; axis=["X","Y","Z"])
+function ref_surface_from_blocks(blks::AbstractArray{<:Number,2};
+	 axis=["X","Y","Z"])
 
 	if typeof(axis)==String
 		axis = [axis]
@@ -174,7 +177,7 @@ function ref_surface_from_blocks(blks; axis=["X","Y","Z"])
 	        end
 	    end
 	end
-	out_surf = hcat(ref[1],ref[2],ref[3])'
+	out_surf = permutedims(hcat(ref[1],ref[2],ref[3]))
 
 	if length(axis)==1
 		return out_surf
@@ -183,7 +186,12 @@ function ref_surface_from_blocks(blks; axis=["X","Y","Z"])
 	end
 end
 
-function unfold(refsurf_true_coords,input_blocks,input_samps=nothing;neigh_type="knn",neigh_val=15)
+function unfold(refsurf_true_coords::AbstractArray{<:Number,2},
+	input_blocks::AbstractArray{<:Number,2}, input_samps=nothing;
+	neigh_type="knn",neigh_val=15,seed=1234567890)
+
+	# random seed
+	Random.seed!(seed)
 
 	# Getting normals
 	normals_neigh = neigh_type=="knn" ? neigh_val : 25

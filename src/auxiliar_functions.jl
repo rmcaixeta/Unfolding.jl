@@ -7,12 +7,24 @@ using LinearAlgebra
 using WriteVTK
 using StatsPlots
 using Clustering
-
+using Suppressor
 
 ### AUXILIAR FUNCTIONS ###
 
+# Adjust matrix format
+function julia_matrix(x;columns=nothing)
+
+	x = columns==nothing ? x : x[:,[Symbol(v) for v in columns]]
+	shape = size(x)
+	@assert (shape[1]==3 || shape[2]==3) "Three coordinate matrix should be informed"
+
+	x = typeof(x)<:Matrix{<:Number} ? x : Matrix{Float64}(x)
+	x = (shape[2]==3 && shape[1]!=3) ? permutedims(x) : x
+	return x
+end
+
 # Average duplicate points
-function _remove_duplicates(coords,tol=0.5)
+function _remove_duplicates(coords::AbstractArray{<:Number,2},tol=0.5)
 	groups = [union(x.core_indices,x.boundary_indices) for x in dbscan(coords, tol)]
 	outcoords = zeros(Float64,3,length(groups))
 	for g in 1:length(groups)
@@ -27,7 +39,7 @@ function _remove_duplicates(coords,tol=0.5)
 end
 
 # Isomap neighborhood
-function _isomap_neighbors(ref_coords, neigh_type, neigh_val)
+function _isomap_neighbors(ref_coords::AbstractArray{<:Number,2}, neigh_type::String, neigh_val)
 	tree = BallTree(ref_coords)
 	if neigh_type=="knn"
 		idxs, dists = knn(tree, ref_coords, neigh_val, true)
@@ -39,7 +51,7 @@ function _isomap_neighbors(ref_coords, neigh_type, neigh_val)
 end
 
 # Get surface normals
-function _normals(ref_surf,nneigh)
+function _normals(ref_surf::AbstractArray{<:Number,2},nneigh::Number)
 	tree = BallTree(ref_surf)
 	idxs, dists = knn(tree, ref_surf, nneigh, true)
 
@@ -87,11 +99,6 @@ function _normals(ref_surf,nneigh)
 		end
 	end
 
-	# missing_pts = setdiff(pre_loop,visited)
-	# if length(missing_pts)>0
-	# 	println("bad: ",length(missing_pts)) #deal with not visited points
-	# end
-
 	for i in unique(to_loop)
 		X = ref_normals[:,idxs[i]]
 		Y = fill(ref_normals[1,i],size(X))
@@ -105,7 +112,7 @@ function _normals(ref_surf,nneigh)
 end
 
 # Error function
-function _mse_coords(x, locations, distances)
+function _mse_coords(x::Array{Float64,1}, locations::AbstractArray{<:Number,2}, distances::Array{Float64,1})
     mse = 0.0
     for k in 1:length(distances)
         loc, d = [locations[:,k],distances[k]]
@@ -116,7 +123,8 @@ function _mse_coords(x, locations, distances)
 end
 
 # Guess initial XYZ
-function _xyzguess(coords_to_allocate, ref_coords, ref_transf_coords, ref_surf_normals=nothing)
+function _xyzguess(coords_to_allocate::AbstractArray{<:Number,2}, ref_coords::AbstractArray{<:Number,2},
+	 ref_transf_coords::AbstractArray{<:Number,2}, ref_surf_normals=nothing)
 
     tree = BallTree(ref_coords)
 	idxs, dists = knn(tree, coords_to_allocate, 1, true)
@@ -148,7 +156,9 @@ function _xyzguess(coords_to_allocate, ref_coords, ref_transf_coords, ref_surf_n
 end
 
 # Check error
-function unfold_error(true_coords, transf_coords, nneigh, max_error=5, outfunc=true; plotname="error")
+function unfold_error(true_coords::AbstractArray{<:Number,2},
+	 transf_coords::AbstractArray{<:Number,2},
+	 nneigh::Int, max_error=5, outfunc=true; plotname="error")
 
     tree = BallTree(true_coords)
 	idxs, dists = knn(tree, true_coords, nneigh, true)
@@ -175,7 +185,7 @@ function unfold_error(true_coords, transf_coords, nneigh, max_error=5, outfunc=t
 	end
 
 	if outfunc==true
-		fig = boxplot(["Unfolding error"], error)
+		@suppress fig = boxplot(["Unfolding error"], error)
 		savefig(plotname)
 		return error
 	else
@@ -185,7 +195,7 @@ function unfold_error(true_coords, transf_coords, nneigh, max_error=5, outfunc=t
 	end
 end
 
-function data_to_csv(coords,outname,colnames)
+function data_to_csv(coords::AbstractArray{<:Number,2},outname::String,colnames)
 
 	out = length(size(coords))==1 ? coords : coords'
 	open(string(outname,".csv"); write=true) do f
@@ -194,7 +204,7 @@ function data_to_csv(coords,outname,colnames)
 	end
 end
 
-function data_to_vtk(coords,outname,extra_props=nothing)
+function data_to_vtk(coords::AbstractArray{<:Number,2},outname::String,extra_props=nothing)
 	verts = [MeshCell( VTKCellTypes.VTK_VERTEX, [i]) for i in 1:size(coords)[2] ]
 	outfiles = vtk_grid(outname,coords,(verts)) do vtk
 		if extra_props!=nothing
