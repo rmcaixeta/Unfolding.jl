@@ -195,7 +195,7 @@ function unfold_error(true_coords::AbstractArray{<:Number,2},
 	end
 end
 
-function data_to_csv(coords::AbstractArray{<:Number,2},outname::String,colnames)
+function data_to_csv(coords::AbstractArray,outname::String,colnames)
 
 	out = length(size(coords))==1 ? coords : coords'
 	open(string(outname,".csv"); write=true) do f

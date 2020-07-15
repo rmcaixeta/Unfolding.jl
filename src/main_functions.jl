@@ -42,7 +42,7 @@ function _isomap(ref_coords::AbstractArray{<:Number,2};neigh_type="knn",neigh_va
 	@assert comps==1 string("There are ",comps," subgroups of isolated vertices. Need to increase number of neighbors")
 
 	use_anchors = length(idxs)>anchor
-	wgt = neigh_type=="inrange" ? Weights([1/length(x) for x in idx]) : Weights([mean(x) for x in dists])
+	wgt = neigh_type=="inrange" ? Weights([1/length(x) for x in idxs]) : Weights([mean(x) for x in dists])
     anchor_ids = use_anchors ? sort!(sample(1:length(idxs), wgt, anchor, replace=false)) : collect(1:length(idxs))
 	anchor = minimum([anchor,length(idxs)])
 
