@@ -1,57 +1,46 @@
-using NearestNeighbors
-using StatsBase
-using MultivariateStats
-using Distances
-using DelimitedFiles
-using LinearAlgebra
-using WriteVTK
-using StatsPlots
-using Clustering
-using Suppressor
 
-### AUXILIAR FUNCTIONS ###
 
-# Adjust matrix format
-function julia_matrix(x;columns=nothing)
+# Optimization coordinates
+function _opt(points_known_true::AbstractArray{<:Number,2},
+	points_known_transf::AbstractArray{<:Number,2},
+	points_to_transf::AbstractArray{<:Number,2};
+	xyzguess=[0],opt_neigh=16)
 
-	x = columns==nothing ? x : x[:,[Symbol(v) for v in columns]]
-	shape = size(x)
-	@assert (shape[1]==3 || shape[2]==3) "Three coordinate matrix should be informed"
+	points_known_true = typeof(points_known_true)<:AbstractArray{Float64} ? points_known_true : convert(Array{Float64}, points_known_true)
+	points_to_transf = typeof(points_to_transf)<:AbstractArray{Float64} ? points_to_transf : convert(Array{Float64}, points_to_transf)
 
-	x = typeof(x)<:Matrix{<:Number} ? x : Matrix{Float64}(x)
-	x = (shape[2]==3 && shape[1]!=3) ? permutedims(x) : x
-	return x
-end
+    tree = BallTree(points_known_true)
+    idxs, dists = knn(tree, points_to_transf, opt_neigh, true)
 
-# Average duplicate points
-function _remove_duplicates(coords::AbstractArray{<:Number,2},tol=0.5)
-	groups = [union(x.core_indices,x.boundary_indices) for x in dbscan(coords, tol)]
-	outcoords = zeros(Float64,3,length(groups))
-	for g in 1:length(groups)
-		idx = groups[g]
-		if length(idx)==1
-			outcoords[:,g] .= dropdims(coords[:,idx],dims=2)
-		else
-			outcoords[:,g] .= mean!(outcoords[:,g],coords[:,idx])
+    out_coords = zeros(Float64,3,length(idxs))
+    remake_known = []
+    remake_transf = []
+
+    for i in 1:length(idxs)
+        locs = points_known_transf[:,idxs[i]]
+        d = dists[i]
+		initial_guess = points_known_transf[:,idxs[i][1]]
+		if length(xyzguess)>1
+			initial_guess = xyzguess[:,i]
 		end
-	end
-	return outcoords
+
+        opt = optimize(x->_mse_coords(x, locs, d), initial_guess)#, LBFGS())
+
+        res = Optim.minimizer(opt)
+        out_coords[:,i]=res
+
+    end
+
+   return out_coords
+
 end
 
-# Isomap neighborhood
-function _isomap_neighbors(ref_coords::AbstractArray{<:Number,2}, neigh_type::String, neigh_val)
-	tree = BallTree(ref_coords)
-	if neigh_type=="knn"
-		idxs, dists = knn(tree, ref_coords, neigh_val, true)
-		return idxs, dists
-	else
-		idxs = inrange(tree, ref_coords, neigh_val, true)
-		return idxs, nothing
-	end
-end
+
 
 # Get surface normals
 function _normals(ref_surf::AbstractArray{<:Number,2},nneigh::Number)
+
+	ref_surf = typeof(ref_surf)<:AbstractArray{Float64} ? ref_surf : convert(Array{Float64}, ref_surf)
 	tree = BallTree(ref_surf)
 	idxs, dists = knn(tree, ref_surf, nneigh, true)
 
@@ -126,7 +115,9 @@ end
 function _xyzguess(coords_to_allocate::AbstractArray{<:Number,2}, ref_coords::AbstractArray{<:Number,2},
 	 ref_transf_coords::AbstractArray{<:Number,2}, ref_surf_normals=nothing)
 
-    tree = BallTree(ref_coords)
+	ref_coords = typeof(ref_coords)<:AbstractArray{Float64} ? ref_coords : convert(Array{Float64}, ref_coords)
+	coords_to_allocate = typeof(coords_to_allocate)<:AbstractArray{Float64} ? coords_to_allocate : convert(Array{Float64}, coords_to_allocate)
+	tree = BallTree(ref_coords)
 	idxs, dists = knn(tree, coords_to_allocate, 1, true)
 
 	if ref_surf_normals==nothing
@@ -155,11 +146,13 @@ function _xyzguess(coords_to_allocate::AbstractArray{<:Number,2}, ref_coords::Ab
 	end
 end
 
+
 # Check error
 function unfold_error(true_coords::AbstractArray{<:Number,2},
 	 transf_coords::AbstractArray{<:Number,2},
 	 nneigh::Int, max_error=5, outfunc=true; plotname="error")
 
+	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
     tree = BallTree(true_coords)
 	idxs, dists = knn(tree, true_coords, nneigh, true)
 
@@ -185,33 +178,11 @@ function unfold_error(true_coords::AbstractArray{<:Number,2},
 	end
 
 	if outfunc==true
-		@suppress fig = boxplot(["Unfolding error"], error)
-		savefig(plotname)
+		_make_boxplot(error,plotname)
 		return error
 	else
 		bad = unique(bad_ids)
 		good = setdiff(Array(1:size(true_coords)[2]),bad)
 		return good,bad
 	end
-end
-
-function data_to_csv(coords::AbstractArray,outname::String,colnames)
-
-	out = length(size(coords))==1 ? coords : coords'
-	open(string(outname,".csv"); write=true) do f
-		write(f, string(join(colnames,","),"\n"))
-		writedlm(f, out, ',')
-	end
-end
-
-function data_to_vtk(coords::AbstractArray{<:Number,2},outname::String,extra_props=nothing)
-	verts = [MeshCell( VTKCellTypes.VTK_VERTEX, [i]) for i in 1:size(coords)[2] ]
-	outfiles = vtk_grid(outname,coords,(verts)) do vtk
-		if extra_props!=nothing
-			for (name,prop) in extra_props
-				vtk[name] = prop
-			end
-		end
-	end
-
 end
