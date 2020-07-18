@@ -3,9 +3,6 @@ uuid = "c5d2ca1b-4127-462e-b5fa-7f6e5ca16f83"
 authors = ["Rafael Moniz Caixeta and contributors"]
 version = "0.1.0"
 
-[compat]
-julia = "1"
-
 [deps]
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
@@ -22,6 +19,10 @@ SimpleWeightedGraphs = "47aef6b3-ad0c-573a-a1e2-d07658019622"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
+
+[compat]
+Optim = "0.22"
+julia = "1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
