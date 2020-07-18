@@ -12,7 +12,7 @@ using StatsBase:mean,mean!,Weights,sample,standardize,ZScoreTransform
 using StatsPlots:boxplot,savefig
 using WriteVTK
 
-using Distributed
+#using Distributed
 using Distances
 using LightGraphs:dijkstra_shortest_paths,connected_components
 using Optim
@@ -23,6 +23,14 @@ include("landmark_isomap.jl")
 include("reference_points.jl")
 include("unfold.jl")
 
-export unfold, ref_surface_from_blocks, unfold_error, coordinate_matrix, data_to_vtk, data_to_csv, landmark_isomap
+export
+    unfold,
+    ref_surface_from_blocks,
+    unfold_error_ids,
+    unfold_error_dists,
+    coordinate_matrix,
+    data_to_vtk,
+    data_to_csv,
+    landmark_isomap
 
 end

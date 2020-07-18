@@ -33,7 +33,7 @@ function data_to_vtk(coords::AbstractArray{<:Number,2},outname::String,extra_pro
 
 end
 
-function _make_boxplot(error,plotname)
+function _make_boxplot(error::AbstractArray,plotname::String)
 	fig = boxplot(["Unfolding error"], error)
 	savefig(plotname)
 end

@@ -148,41 +148,63 @@ end
 
 
 # Check error
-function unfold_error(true_coords::AbstractArray{<:Number,2},
-	 transf_coords::AbstractArray{<:Number,2},
-	 nneigh::Int, max_error=5, outfunc=true; plotname="error")
+function unfold_error_ids(true_coords::AbstractArray{<:Number,2},
+	 transf_coords::AbstractArray{<:Number,2};
+	 nneigh=8, max_error=5)
 
 	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
     tree = BallTree(true_coords)
 	idxs, dists = knn(tree, true_coords, nneigh, true)
 
-	tdists = zeros(Float64,size(dists[1]))
 	bad_ids = Int[]
+
+	for x in 1:length(idxs)
+		tdists = zeros(Float64,size(idxs[x]))
+		for y in length(idxs[x])
+			tdists[y] = euclidean(transf_coords[:,x],transf_coords[:,idxs[x][y]])
+		end
+		tdists .-= dists[x]
+		tdists .= abs.(tdists)
+		ids = findall(tdists .> max_error)
+
+		if length(ids)>0
+			push!(bad_ids,x)
+			append!(bad_ids,idxs[x][ids])
+		end
+	end
+
+	bad = unique(bad_ids)
+	good = setdiff(Array(1:size(true_coords)[2]),bad)
+	return good,bad
+
+end
+
+
+function unfold_error_dists(true_coords::AbstractArray{<:Number,2},
+	 transf_coords::AbstractArray{<:Number,2};
+	 nneigh=8, plotname="")
+
+	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
+    tree = BallTree(true_coords)
+	idxs, dists = knn(tree, true_coords, nneigh, true)
+
 	error = Float64[]
 
 	for x in 1:length(idxs)
+		tdists = zeros(Float64,size(idxs[x]))
 		for y in length(idxs[x])
 			tdists[y] = euclidean(transf_coords[:,x],transf_coords[:,idxs[x][y]])
 		end
 
 		tdists .-= dists[x]
 		tdists .= abs.(tdists)
-		check = findall(tdists .> max_error)
 
-		if outfunc==true
-			append!(error,tdists[2:end])
-		elseif length(check)>0
-			push!(bad_ids,x)
-			append!(bad_ids,idxs[x][check])
-		end
+		append!(error,tdists[2:end])
 	end
 
-	if outfunc==true
+	if plotname!=""
 		_make_boxplot(error,plotname)
-		return error
-	else
-		bad = unique(bad_ids)
-		good = setdiff(Array(1:size(true_coords)[2]),bad)
-		return good,bad
 	end
+
+	return error
 end
