@@ -22,6 +22,6 @@ using Test
         df_block[:,c] = unf_block[i,:]
     end
 
-    good, bad = unfold_error_ids(hcat(input_samp,input_block), hcat(unf_samp,unf_block), nneigh=5, max_error=5)
-    @test length(good)>90*length(bad)
+    good, bad = unfold_error_ids(hcat(input_samp,input_block), hcat(unf_samp,unf_block))
+    @test length(good)>50*length(bad)
 end

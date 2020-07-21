@@ -12,9 +12,9 @@ function coordinate_matrix(x;columns=nothing)
 	return x
 end
 
-function data_to_csv(coords::AbstractArray,outname::String,colnames)
+function data_to_csv(input_matrix::AbstractArray,outname::String,colnames)
 
-	out = length(size(coords))==1 ? coords : coords'
+	out = length(size(input_matrix))==1 ? input_matrix : input_matrix'
 	open(string(outname,".csv"); write=true) do f
 		write(f, string(join(colnames,","),"\n"))
 		writedlm(f, out, ',')

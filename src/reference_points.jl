@@ -1,6 +1,6 @@
 
 # Skeletonization
-function ref_surface_from_blocks(blks::AbstractArray{<:Number,2};
+function ref_surface_from_blocks(blocks::AbstractArray{<:Number,2};
 	 axis=["X","Y","Z"])
 
 	if typeof(axis)==String
@@ -10,7 +10,7 @@ function ref_surface_from_blocks(blks::AbstractArray{<:Number,2};
 	ref = [Float64[],Float64[],Float64[]]
 	cells = zeros(Float64,3)
 	for c in 1:3
-		coords =  sort!(unique(blks[c,:]))
+		coords =  sort!(unique(blocks[c,:]))
 		cell_ = sort!(unique([coords[x]-coords[x-1] for x in 2:length(coords)]))
 		#@assert length(cell_)==1 "Block model must have regular cell sizes"
 		cells[c] = cell_[1]
@@ -19,11 +19,11 @@ function ref_surface_from_blocks(blks::AbstractArray{<:Number,2};
 	#@assert axis in ["X","Y","Z"] "Invalid axis"
 	for c in axis
 		ax = coord_ids[c]
-	    axis_coords = sort!(unique(blks[ax,:]))
+	    axis_coords = sort!(unique(blocks[ax,:]))
 		sec = setdiff([1,2,3],ax)
 
 	    for s in axis_coords
-	        section = blks[:,blks[ax,:] .== s]
+	        section = blocks[:,blocks[ax,:] .== s]
 
 	        min_i = minimum(section[sec[1],:])
 	        min_j = minimum(section[sec[2],:])

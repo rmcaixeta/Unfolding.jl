@@ -150,7 +150,7 @@ end
 # Check error
 function unfold_error_ids(true_coords::AbstractArray{<:Number,2},
 	 transf_coords::AbstractArray{<:Number,2};
-	 nneigh=8, max_error=5)
+	 nneigh=16, max_error=5)
 
 	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
     tree = BallTree(true_coords)
@@ -182,7 +182,7 @@ end
 
 function unfold_error_dists(true_coords::AbstractArray{<:Number,2},
 	 transf_coords::AbstractArray{<:Number,2};
-	 nneigh=8, plotname="")
+	 nneigh=16, plotname=nothing)
 
 	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
     tree = BallTree(true_coords)
@@ -202,7 +202,7 @@ function unfold_error_dists(true_coords::AbstractArray{<:Number,2},
 		append!(error,tdists[2:end])
 	end
 
-	if plotname!=""
+	if plotname!=nothing
 		_make_boxplot(error,plotname)
 	end
 

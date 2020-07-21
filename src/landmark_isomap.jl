@@ -1,31 +1,31 @@
 
-function landmark_isomap(ref_coords::AbstractArray{<:Number,2};neigh_type="knn",neigh_val=15,anchor=1500)
+function landmark_isomap(input_coords::AbstractArray{<:Number,2};isomap_search="knn",isomap_neigh=16,anchors=1500)
 
-	nb_points = size(ref_coords)[2]
-	g, anchor_ids = _make_graph_and_set_anchors(ref_coords,neigh_type,neigh_val,anchor)
-	anchor = minimum([anchor,nb_points])
-	use_anchors = nb_points>anchor
-	anchor_coords, other_ids, M1, M3 = _anchors_mds(nb_points,anchor,g,anchor_ids,use_anchors)
+	nb_points = size(input_coords)[2]
+	g, anchor_ids = _make_graph_and_set_anchors(input_coords,isomap_search,isomap_neigh,anchors)
+	anchors = minimum([anchors,nb_points])
+	use_anchors = nb_points>anchors
+	anchor_coords, other_ids, M1, M3 = _anchors_mds(nb_points,anchors,g,anchor_ids,use_anchors)
 
 	if use_anchors
 
 		other_coords = zeros(Float64,(2,length(other_ids)))
 		for i in 1:length(other_ids)
-			out = _triang(i,g,anchor,anchor_ids,other_ids,M1,M3)
+			out = _triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
 			other_coords[1,i] = out[1,1]
 			other_coords[2,i] = out[2,1]
 		end
 
 		# other_coords = @distributed (hcat) for i in 1:length(other_ids)
-		# 	_triang(i,g,anchor,anchor_ids,other_ids,M1,M3)
+		# 	_triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
 		# end
 
-		transf_ref_coords = zeros(Float64,size(ref_coords))
+		transf_ref_coords = zeros(Float64,size(input_coords))
 		transf_ref_coords[1:2,anchor_ids] .= permutedims(anchor_coords)
 		transf_ref_coords[1:2,other_ids] .= other_coords
 		return transf_ref_coords
 	else
-		transf_ref_coords = zeros(Float64,size(ref_coords))
+		transf_ref_coords = zeros(Float64,size(input_coords))
 		transf_ref_coords[1:2,anchor_ids] .= permutedims(anchor_coords)
 		return transf_ref_coords
 	end
