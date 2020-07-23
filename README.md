@@ -146,7 +146,7 @@ p.show()
 ```julia
 ref_surface_from_blocks(blocks;axis=["X","Y","Z"])
 ```
->Extract mid-surface points that split the informed block model in two. These points will be used as reference for unfolding.
+Extract mid-surface points that split the informed block model in two. These points will be used as reference for unfolding.
 >
 >**Arguments:**
 >
@@ -166,7 +166,7 @@ ref_surface_from_blocks(blocks;axis=["X","Y","Z"])
 unfold(ref_pts,input_domain,input_samps=nothing;
 	isomap_search="knn",isomap_neigh=16,seed=1234567890,max_error=5,neighs_to_valid=16, nb_chunks=4)
 ```
->Unfold the input points based on the reference points informed.
+Unfold the input points based on the reference points informed.
 >
 >**Arguments:**
 >
@@ -192,7 +192,7 @@ unfold(ref_pts,input_domain,input_samps=nothing;
 ```julia
 coordinate_matrix(x;columns=nothing)
 ```
->Reshape and filter dataframe or matrix to the right format for unfolding.
+Reshape and filter dataframe or matrix to the right format for unfolding.
 >
 >**Arguments:**
 >
@@ -210,7 +210,7 @@ coordinate_matrix(x;columns=nothing)
 ```julia
 data_to_vtk(coords,outname,extra_props=nothing)
 ```
->Export matrix as VTK points.
+Export matrix as VTK points.
 >
 >**Arguments:**
 >
@@ -226,7 +226,7 @@ data_to_vtk(coords,outname,extra_props=nothing)
 ```julia
 data_to_csv(input_matrix,outname,colnames)
 ```
->Export matrix as CSV table.
+Export matrix as CSV table.
 >
 >**Arguments:**
 >
@@ -244,7 +244,7 @@ data_to_csv(input_matrix,outname,colnames)
 unfold_error_ids(true_coords,transf_coords;
 	 nneigh=16, max_error=5)
 ```
->Unfolding distorts the original distances between neighbor points. This function give the IDs of the points above and below the given error threshold.
+Unfolding distorts the original distances between neighbor points. This function give the IDs of the points above and below the given error threshold.
 >
 >**Arguments:**
 >
@@ -265,7 +265,7 @@ unfold_error_ids(true_coords,transf_coords;
 unfold_error_dists(true_coords,transf_coords;
 	 nneigh=16, plotname="")
 ```
->Unfolding distorts the original distances between neighbor points. This function output the difference of the expected distance for each pair analyzed. Optionally output a boxplot with these errors.
+Unfolding distorts the original distances between neighbor points. This function output the difference of the expected distance for each pair analyzed. Optionally output a boxplot with these errors.
 >
 >**Arguments:**
 >
@@ -286,7 +286,7 @@ unfold_error_dists(true_coords,transf_coords;
 ```julia
 landmark_isomap(input_coords;isomap_search="knn",isomap_neigh=15,anchors=1500)
 ```
->This function is executed inside `unfolding()` function. Here it is made available for other uses if desired.
+This function is executed inside `unfolding()` function. Here it is made available for other uses if desired.
 >
 >**Arguments:**
 >
