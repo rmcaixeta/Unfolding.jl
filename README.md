@@ -3,9 +3,9 @@
 [![Build Status](https://travis-ci.com/rmcaixeta/Unfolding.jl.svg?branch=master)](https://travis-ci.com/rmcaixeta/Unfolding.jl)
 [![Coverage](https://codecov.io/gh/rmcaixeta/Unfolding.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/rmcaixeta/Unfolding.jl)
 
-`Unfolding.jl` is a package written in Julia to perform unfolding of 3-D geometries. It was developed for geostatistical cases where complex 3-D domains are modeled and need to be unfolded for appropriate variography, estimations and simulations.
+`Unfolding.jl` is a package written in Julia to perform unfolding of 3-D geometries. It was developed for geostatistical cases where complex 3-D domains are modeled and need to be unfolded for appropriate spatial analysis, estimations and simulations.
 
-Julia was used due to its high performance and easy coding. This package was successfully tested with some big mining datasets but is still under development, so please enter in contact if you have some issue or feel free to contribute to the code (it is open source!).
+Julia was used due to its high performance and easy coding. This package was successfully tested with some big mining datasets but is still under development, so please enter in contact if you have some issue or feel free to contribute to the code.
 
 ## Installation
 
@@ -19,11 +19,11 @@ using Pkg; Pkg.add("Unfolding")
 
 ## Usage
 
-The algorithm is based on the author thesis (a paper in English is to be published soon). There are three possible workflows:
+The algorithm is based on the author thesis (a paper is to be published soon). There are three possible workflows:
 
-* Extract reference points for unfolding from a given block model. Run unfolding for any points using them.
-* Reference points for unfolding are already available from other sources. Run unfolding for any points using them.
-* ~~Extract reference points for unfolding from a given mesh. Run unfolding for any points using them~~ (not available yet).
+* Extract reference points from a given block model. Run unfolding for any points using them.
+* Reference points are already available from other sources. Run unfolding for any points using them.
+* Extract reference points from a given mesh. Run unfolding for any points using them _(not available yet)_.
 
 The example below is based on a block model within a folded domain. It is only necessary the X, Y and Z coordinates of the block centroids. Optionally, samples coordinates can also be informed.
 
@@ -78,18 +78,16 @@ Julia still need to be installed before calling it in Python. Additionally, an e
 
 ```python
 pip install julia
+import julia
+julia.install()
 ```
 
 The data for the unfolding functions should be informed as Numpy arrays. Note that the input arrays are transposed because multidimensional arrays in Julia are stored in column-major order.
 
 ```python
-# This part is only necessary for the first run; after that, this part can be deleted
-import julia
-julia.install()
-
 # Python example
 from julia import Julia
-Julia(compiled_modules=False) # excluding this line makes it run faster; but may crash in some systems
+Julia(compiled_modules=False) # excluding these first lines makes it run faster; but may crash in some systems
 
 import pandas as pd
 from julia import Unfolding as unf
@@ -145,7 +143,7 @@ p.show()
 ### Main functions
 
 #### `Unfolding.ref_surface_from_blocks` - Function
->```julia
+```julia
 ref_surface_from_blocks(blocks;axis=["X","Y","Z"])
 ```
 >Extract mid-surface points that split the informed block model in two. These points will be used as reference for unfolding.
@@ -164,7 +162,7 @@ ref_surface_from_blocks(blocks;axis=["X","Y","Z"])
 
 
 #### `Unfolding.unfold` - Function
->```julia
+```julia
 unfold(ref_pts,input_domain,input_samps=nothing;
 	isomap_search="knn",isomap_neigh=16,seed=1234567890,max_error=5,neighs_to_valid=16, nb_chunks=4)
 ```
@@ -191,7 +189,7 @@ unfold(ref_pts,input_domain,input_samps=nothing;
 
 ### Data Handling
 #### `Unfolding.coordinate_matrix` - Function
->```julia
+```julia
 coordinate_matrix(x;columns=nothing)
 ```
 >Reshape and filter dataframe or matrix to the right format for unfolding.
@@ -209,7 +207,7 @@ coordinate_matrix(x;columns=nothing)
 >- `::Matrix{Float}`: the coordinate matrix in the right format for unfolding.
 
 #### `Unfolding.data_to_vtk` - Function
->```julia
+```julia
 data_to_vtk(coords,outname,extra_props=nothing)
 ```
 >Export matrix as VTK points.
@@ -225,7 +223,7 @@ data_to_vtk(coords,outname,extra_props=nothing)
 >- Exported `.vtu` file.
 
 #### `Unfolding.data_to_csv` - Function
->```julia
+```julia
 data_to_csv(input_matrix,outname,colnames)
 ```
 >Export matrix as CSV table.
@@ -242,7 +240,7 @@ data_to_csv(input_matrix,outname,colnames)
 
 ### Extra
 #### `Unfolding.unfold_error_ids` - Function
->```julia
+```julia
 unfold_error_ids(true_coords,transf_coords;
 	 nneigh=16, max_error=5)
 ```
@@ -263,7 +261,7 @@ unfold_error_ids(true_coords,transf_coords;
 >- `Tuple(::Array{Int},::Array{Int})`: a tuple of two arrays. The first array with the ID of points that passed the tests. The second array with the ID of points that fail during the tests.
 
 #### `Unfolding.unfold_error_dists` - Function
->```julia
+```julia
 unfold_error_dists(true_coords,transf_coords;
 	 nneigh=16, plotname="")
 ```
@@ -285,7 +283,7 @@ unfold_error_dists(true_coords,transf_coords;
 >- Exported `.png` file (optional).
 
 #### `Unfolding.landmark_isomap` - Function
->```julia
+```julia
 landmark_isomap(input_coords;isomap_search="knn",isomap_neigh=15,anchors=1500)
 ```
 >This function is executed inside `unfolding()` function. Here it is made available for other uses if desired.
