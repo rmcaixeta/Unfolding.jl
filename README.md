@@ -11,10 +11,10 @@ Julia was used due to its high performance and easy coding. This package was suc
 
 It is necessary to install Julia to run this code. Installation instructions for Windows, Linux and macOS are available [here](https://julialang.org/downloads/platform/).
 
-After that, it is necessary to install the Unfolding package. Open a terminal, type `julia` to open the REPL and then install the package with the following command:
+After that, it is necessary to install the Unfolding package. Open a terminal, type `julia` to open the REPL and then install the package with the following command. Additionally, the CSV package is also installed to run the examples in the sequence. 
 
 ```julia
-using Pkg; Pkg.add("Unfolding")
+using Pkg; Pkg.add("Unfolding"); Pkg.add("CSV")
 ```
 
 ## Usage
