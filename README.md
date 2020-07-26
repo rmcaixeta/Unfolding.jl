@@ -11,7 +11,7 @@ Julia was used due to its high performance and easy coding. This package was suc
 
 It is necessary to install Julia to run this code. Installation instructions for Windows, Linux and macOS are available [here](https://julialang.org/downloads/platform/).
 
-After that, it is necessary to install the Unfolding package. Open a terminal, type `julia` to open the REPL and then install the package with the following command. Additionally, the CSV package is also installed to run the examples in the sequence. 
+After that, it is necessary to install the Unfolding package. Open a terminal, type `julia` to open the REPL and then install the package with the following command. Additionally, the CSV package is also installed to run the examples in the sequence.
 
 ```julia
 using Pkg; Pkg.add("Unfolding"); Pkg.add("CSV")
@@ -60,8 +60,8 @@ for (i,c) in enumerate([:XT,:YT,:ZT])
 end
 
 # Write output to CSV
-CSV.write( "out_dh", df_samp )
-CSV.write( "out_blks", df_block )
+CSV.write( "out_dh.csv", df_samp )
+CSV.write( "out_blks.csv", df_block )
 
 # Write output to VTK format
 data_to_vtk(unf_block,"out_blks")
@@ -107,8 +107,8 @@ unf_block, unf_samp = unf.unfold(ref_surface,input_block,input_samp)
 
 # Write new XT, YT and ZT columns with the transformed coordinates
 for i,c in enumerate(["XT","YT","ZT"]):
-    df_block[:,c] = unf_block[i,:]
-    df_samp[:,c] = unf_samp[i,:]
+    df_block[c] = unf_block[i,:]
+    df_samp[c] = unf_samp[i,:]
 
 # Write output to CSV
 df_block.to_csv("out_blks.csv",index=False)
