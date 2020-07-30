@@ -9,16 +9,16 @@ function landmark_isomap(input_coords::AbstractArray{<:Number,2};isomap_search="
 
 	if use_anchors
 
-		other_coords = zeros(Float64,(2,length(other_ids)))
-		for i in 1:length(other_ids)
-			out = _triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
-			other_coords[1,i] = out[1,1]
-			other_coords[2,i] = out[2,1]
-		end
-
-		# other_coords = @distributed (hcat) for i in 1:length(other_ids)
-		# 	_triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
+		# other_coords = zeros(Float64,(2,length(other_ids)))
+		# for i in 1:length(other_ids)
+		# 	out = _triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
+		# 	other_coords[1,i] = out[1,1]
+		# 	other_coords[2,i] = out[2,1]
 		# end
+
+		other_coords = @distributed (hcat) for i in 1:length(other_ids)
+		 	_triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
+		 end
 
 		transf_ref_coords = zeros(Float64,size(input_coords))
 		transf_ref_coords[1:2,anchor_ids] .= permutedims(anchor_coords)
