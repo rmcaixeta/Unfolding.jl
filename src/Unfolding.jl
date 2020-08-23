@@ -8,7 +8,7 @@ using MultivariateStats:dmat2gram,PCA,fit,projection
 using NearestNeighbors
 using Random
 using SimpleWeightedGraphs
-using StatsBase:mean,mean!,Weights,sample,standardize,ZScoreTransform
+using StatsBase:mean,mean!,Weights,sample,standardize,ZScoreTransform,quantile
 using StatsPlots:boxplot,savefig
 using WriteVTK
 

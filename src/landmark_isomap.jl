@@ -32,7 +32,7 @@ function landmark_isomap(input_coords::AbstractArray{<:Number,2};isomap_search="
 end
 
 # Isomap neighborhood
-function _isomap_neighbors(ref_coords::AbstractArray{<:Number,2}, neigh_type::String, neigh_val)
+function _get_neighbors(ref_coords::AbstractArray{<:Number,2}, neigh_type::String, neigh_val)
 
 	ref_coords = typeof(ref_coords)<:AbstractArray{Float64} ? ref_coords : convert(Array{Float64}, ref_coords)
 	tree = BallTree(ref_coords)
@@ -49,7 +49,7 @@ function _make_graph_and_set_anchors(ref_coords::AbstractArray{<:Number,2},neigh
 
 	nb_points = size(ref_coords)[2]
 	@assert neigh_type in ["knn","inrange"] "Invalid neighborhood type"
-	idxs, dists = _isomap_neighbors(ref_coords, neigh_type, neigh_val)
+	idxs, dists = _get_neighbors(ref_coords, neigh_type, neigh_val)
 	sources,destinations,weights = [Int64[],Int64[],Float64[]]
 
 	if neigh_type=="knn"
