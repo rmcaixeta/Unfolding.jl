@@ -27,7 +27,7 @@ ImageMorphology = "0.2"
 LightGraphs = "1.3"
 MultivariateStats = "0.7"
 NearestNeighbors = "0.4"
-Optim = "0.22"
+Optim = "0.22, 1.1"
 SimpleWeightedGraphs = "1.1"
 StatsBase = "0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.30, 0.31, 0.32, 0.33"
 StatsPlots = "0.14"
@@ -35,8 +35,8 @@ WriteVTK = "1.7"
 julia = "1"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test","CSV"]
+test = ["Test", "CSV"]
