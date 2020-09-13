@@ -75,7 +75,7 @@ function _remove_duplicates(coords::AbstractArray{<:Number,2};tol=0.01)
 end
 
 function _get_resolution(ref_pts::AbstractArray{<:Number,2})
-	
+
 	idxs, dists = _get_neighbors(ref_pts, "knn", 2)
 	closest_pt = [sum(x) for x in dists]
 	return quantile(closest_pt,0.75)

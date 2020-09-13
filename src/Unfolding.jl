@@ -11,8 +11,7 @@ using SimpleWeightedGraphs
 using StatsBase:mean,mean!,Weights,sample,standardize,ZScoreTransform,quantile
 using StatsPlots:boxplot,savefig
 using WriteVTK
-
-using Distributed
+#using Distributed
 using Distances
 using LightGraphs:dijkstra_shortest_paths,connected_components
 using Optim

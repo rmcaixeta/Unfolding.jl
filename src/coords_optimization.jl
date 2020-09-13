@@ -12,7 +12,21 @@ function _opt(points_known_true::AbstractArray{<:Number,2},
     tree = BallTree(points_known_true)
     idxs, dists = knn(tree, points_to_transf, opt_neigh, true)
 
-	out_coords = @distributed (hcat) for i in 1:length(idxs)
+	#out_coords = @distributed (hcat) for i in 1:length(idxs)
+	#	locs = points_known_transf[:,idxs[i]]
+    #    d = dists[i]
+	#	initial_guess = points_known_transf[:,idxs[i][1]]
+	#	if length(xyzguess)>1
+	#		initial_guess = xyzguess[:,i]
+	#	end
+	#
+    #    opt = optimize(x->_mse_coords(x, locs, d), initial_guess)#, LBFGS())
+    #    res = Optim.minimizer(opt)
+    #    res
+	#end
+
+	out_coords = zeros(Float64,size(points_to_transf))
+	Threads.@threads for i in 1:length(idxs)
 		locs = points_known_transf[:,idxs[i]]
         d = dists[i]
 		initial_guess = points_known_transf[:,idxs[i][1]]
@@ -22,7 +36,7 @@ function _opt(points_known_true::AbstractArray{<:Number,2},
 
         opt = optimize(x->_mse_coords(x, locs, d), initial_guess)#, LBFGS())
         res = Optim.minimizer(opt)
-        res
+        out_coords[:,i] .= res
 	end
 
    return out_coords
