@@ -2,14 +2,19 @@
 function unfold(ref_pts::AbstractArray{<:Number,2},
 	input_domain::AbstractArray{<:Number,2}, input_samps=nothing;
 	isomap_search="knn",isomap_neigh=16,seed=1234567890,
-	max_error=5, neighs_to_valid=16, nb_chunks=4)
+	max_error=5, neighs_to_valid=16, nb_chunks=4, reftol=0.01)
 
 	# random seed
 	Random.seed!(seed)
 
 	# Doing Isomap to get reference surface points
+	ref_pts = _remove_duplicates(ref_pts, tol=reftol)
+	resol = _get_resolution(ref_pts)
 	ref_surf_transf = landmark_isomap(ref_pts,isomap_search=isomap_search,isomap_neigh=isomap_neigh)
-	good, bad = unfold_error_ids(ref_pts, ref_surf_transf, nneigh=8, max_error=max_error)
+	good, bad = unfold_error_ids(ref_pts, ref_surf_transf, nneigh=8, max_error=resol)
+	if length(bad)>length(good)
+		good, bad = unfold_error_ids(ref_pts, ref_surf_transf, nneigh=8, max_error=2*resol)
+	end
 
 	# Get initial guess
 	normals_neigh = isomap_search=="knn" ? isomap_neigh : 25

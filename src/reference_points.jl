@@ -54,16 +54,13 @@ function ref_surface_from_blocks(blocks::AbstractArray{<:Number,2};
 	end
 	out_surf = permutedims(hcat(ref[1],ref[2],ref[3]))
 
-	if length(axis)==1
-		return out_surf
-	else
-		return _remove_duplicates(out_surf)
-	end
+	return out_surf
+
 end
 
 
 # Average duplicate points
-function _remove_duplicates(coords::AbstractArray{<:Number,2},tol=0.5)
+function _remove_duplicates(coords::AbstractArray{<:Number,2};tol=0.01)
 	groups = [union(x.core_indices,x.boundary_indices) for x in dbscan(coords, tol)]
 	outcoords = zeros(Float64,3,length(groups))
 	for g in 1:length(groups)
@@ -75,4 +72,12 @@ function _remove_duplicates(coords::AbstractArray{<:Number,2},tol=0.5)
 		end
 	end
 	return outcoords
+end
+
+function _get_resolution(ref_pts::AbstractArray{<:Number,2})
+
+	idxs, dists = _get_neighbors(ref_pts, "knn", 2)
+	closest_pt = [sum(x) for x in dists]
+	return quantile(closest_pt,0.75)
+
 end

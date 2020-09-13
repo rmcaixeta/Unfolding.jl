@@ -9,16 +9,16 @@ function landmark_isomap(input_coords::AbstractArray{<:Number,2};isomap_search="
 
 	if use_anchors
 
+		#other_coords = @distributed (hcat) for i in 1:length(other_ids)
+		# 	_triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
+		#end
+
 		other_coords = zeros(Float64,(2,length(other_ids)))
-		for i in 1:length(other_ids)
+		Threads.@threads for i in 1:length(other_ids)
 			out = _triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
 			other_coords[1,i] = out[1,1]
 			other_coords[2,i] = out[2,1]
 		end
-
-		# other_coords = @distributed (hcat) for i in 1:length(other_ids)
-		# 	_triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
-		# end
 
 		transf_ref_coords = zeros(Float64,size(input_coords))
 		transf_ref_coords[1:2,anchor_ids] .= permutedims(anchor_coords)
@@ -32,7 +32,7 @@ function landmark_isomap(input_coords::AbstractArray{<:Number,2};isomap_search="
 end
 
 # Isomap neighborhood
-function _isomap_neighbors(ref_coords::AbstractArray{<:Number,2}, neigh_type::String, neigh_val)
+function _get_neighbors(ref_coords::AbstractArray{<:Number,2}, neigh_type::String, neigh_val)
 
 	ref_coords = typeof(ref_coords)<:AbstractArray{Float64} ? ref_coords : convert(Array{Float64}, ref_coords)
 	tree = BallTree(ref_coords)
@@ -49,7 +49,7 @@ function _make_graph_and_set_anchors(ref_coords::AbstractArray{<:Number,2},neigh
 
 	nb_points = size(ref_coords)[2]
 	@assert neigh_type in ["knn","inrange"] "Invalid neighborhood type"
-	idxs, dists = _isomap_neighbors(ref_coords, neigh_type, neigh_val)
+	idxs, dists = _get_neighbors(ref_coords, neigh_type, neigh_val)
 	sources,destinations,weights = [Int64[],Int64[],Float64[]]
 
 	if neigh_type=="knn"
