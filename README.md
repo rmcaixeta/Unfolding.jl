@@ -68,7 +68,7 @@ data_to_vtk(unf_block,"out_blks")
 data_to_vtk(unf_samp,"out_dh")
 ```
 
-The code can be saved in a textfile with `.jl` extension and be called in a terminal: `julia file.jl`. Or you can organize it in Jupyter notebooks (see instructions [here](https://github.com/JuliaLang/IJulia.jl)).
+The code can be saved in a textfile with `.jl` extension and be called in a terminal: `julia file.jl` or `julia -t 4 file.jl` to run faster using 4 threads (or any number of threads you want; this syntax is for threading in Julia 1.5). Or you can organize it in Jupyter notebooks (see instructions [here](https://github.com/JuliaLang/IJulia.jl)).
 
 ### Python example
 
