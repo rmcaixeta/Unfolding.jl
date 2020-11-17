@@ -1,11 +1,12 @@
 using Unfolding
 using CSV
+using DataFrames
 using Test
 
 @testset "Unfolding.jl" begin
     # Reading data
-    df_samp = CSV.read("samples.csv")
-    df_block = CSV.read("block_model.csv")
+    df_samp = CSV.read("samples.csv", DataFrame)
+    df_block = CSV.read("block_model.csv", DataFrame)
 
     # Get coordinate points as matrix
     input_block = coordinate_matrix( df_block, columns=["XC","YC","ZC"] )

@@ -1,7 +1,7 @@
 name = "Unfolding"
 uuid = "c5d2ca1b-4127-462e-b5fa-7f6e5ca16f83"
 authors = ["Rafael Moniz Caixeta"]
-version = "0.1.3"
+version = "0.1.4"
 
 [deps]
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
@@ -25,7 +25,7 @@ Clustering = "0.14"
 Distances = "0.7, 0.8, 0.9, 0.10"
 ImageMorphology = "0.2"
 LightGraphs = "1.3"
-MultivariateStats = "0.7"
+MultivariateStats = "0.7,0.8"
 NearestNeighbors = "0.4"
 Optim = "0.22, 1.0, 1.1, 1.2"
 SimpleWeightedGraphs = "1.1"
@@ -37,6 +37,7 @@ julia = "1"
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 
 [targets]
-test = ["Test","CSV"]
+test = ["Test","CSV","DataFrames"]
