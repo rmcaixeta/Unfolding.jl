@@ -7,6 +7,8 @@ using Test
     # Reading data
     df_samp = CSV.read("samples.csv", DataFrame)
     df_block = CSV.read("block_model.csv", DataFrame)
+    @test df_samp != nothing
+    @test df_block != nothing
 
     # Get coordinate points as matrix
     input_block = coordinate_matrix( df_block, columns=["XC","YC","ZC"] )
@@ -14,8 +16,12 @@ using Test
 
     # Get reference surface points for unfolding
     ref_surface = ref_surface_from_blocks(input_block, axis=["X","Y"])
+    @test ref_surface != nothing
+
     # Get transformed coordinates of blocks and samples after unfolding
     unf_block, unf_samp = unfold(ref_surface,input_block,input_samp)
+    @test unf_block != nothing
+    @test unf_samp != nothing
 
     # Write new XT, YT and ZT columns with the transformed coordinates
     for (i,c) in enumerate([:XT,:YT,:ZT])
