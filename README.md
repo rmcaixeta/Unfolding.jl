@@ -11,10 +11,10 @@ Julia was used due to its high performance and easy coding. This package was suc
 
 It is necessary to install Julia to run this code. Installation instructions for Windows, Linux and macOS are available [here](https://julialang.org/downloads/platform/).
 
-After that, it is necessary to install the Unfolding package. Open a terminal, type `julia` to open the REPL and then install the package with the following command. Additionally, the CSV package is also installed to run the examples in the sequence.
+After that, it is necessary to install the Unfolding package. Open a terminal, type `julia` to open the REPL and then install the package with the following command. Additionally, the CSV and DataFrames packages are also installed to run the examples in the sequence.
 
 ```julia
-using Pkg; Pkg.add("Unfolding"); Pkg.add("CSV")
+using Pkg; Pkg.add("Unfolding"); Pkg.add("CSV"); Pkg.add("DataFrames")
 ```
 
 ## Usage
@@ -71,7 +71,7 @@ data_to_vtk(unf_samp,"out_dh")
 
 The code can be saved in a textfile with `.jl` extension and be called in a terminal: `julia file.jl` or `julia -t 4 file.jl` to run faster using 4 threads (or any number of threads you want; this syntax is for threading in Julia 1.5). Or you can organize it in Jupyter notebooks (see instructions [here](https://github.com/JuliaLang/IJulia.jl)).
 
-### Python example
+### Python example (experimental)
 
 Julia is not a widespread language yet. For those more familiar with Python, the Julia code can be called inside Python scripts.
 
