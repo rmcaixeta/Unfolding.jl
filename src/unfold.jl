@@ -1,4 +1,30 @@
+"""
+	unfold(ref_pts, input_domain, input_samps=nothing;
+	isomap_search="knn",isomap_neigh=16, seed=1234567890,
+	max_error=5, neighs_to_valid=16, nb_chunks=4, reftol=0.01)
 
+Unfold the input points based on the reference points informed. Returns
+a coordinate matrix (3,:) with the unfolded domain points. Or a tuple of two
+matrices (unfolded domain and unfolded samples points).
+
+## Parameters:
+
+* `ref_pts`         - coordinate matrix of shape (3,:) with the reference points
+  for unfolding
+* `input_domain`    - coordinate matrix of shape (3,:) with domain points for
+  unfolding (blocks or mesh points)
+* `input_samps`     - coordinate matrix of shape (3,:) of the sample points (optional)
+* `isomap_search`   - search type to build neighbors graph for Isomap ("knn" for
+  k-nearest neighbor or "inrange" for radius search).
+* `isomap_neigh`    - number of neighbors (for `isomap_search`="knn") or radius distance
+  (for `isomap_search`="inrange") to build neighbors graph for Isomap.
+* `seed`            - seed for random values used during the process.
+* `neighs_to_valid` - number of nearest neighbors to use for validations during
+  the process.
+* `max_error`       - the maximum accepted absolute difference of the distances
+  for the closest neighbors after deformation.
+* `nb_chunks`       - number of rounds of optimization.
+"""
 function unfold(ref_pts::AbstractArray{<:Number,2},
 	input_domain::AbstractArray{<:Number,2}, input_samps=nothing;
 	isomap_search="knn",isomap_neigh=16,seed=1234567890,

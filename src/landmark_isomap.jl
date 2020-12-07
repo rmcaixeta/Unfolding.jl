@@ -1,4 +1,19 @@
 
+"""
+	landmark_isomap(input_coords; isomap_search="knn", isomap_neigh=16, anchors=1500)
+
+This function runs Landmark Isomap at 3-D points and returns a coordinate matrix
+of shape (3,:) with the unfolded points (Z=0 for all points).
+
+## Parameters:
+
+* `input_coords`  - coordinate matrix of shape (3,:) of the reference points.
+* `isomap_search` - search type to build neighbors graph for Isomap ("knn" for
+  k-nearest neighbor or "inrange" for radius search)
+* `isomap_neigh`  - number of neighbors (for `isomap_search`="knn") or radius
+  distance (for `isomap_search`="inrange") to build neighbors graph for Isomap.
+* `anchors`       - number of anchors/landmark points for the dimensionality reduction.
+"""
 function landmark_isomap(input_coords::AbstractArray{<:Number,2};isomap_search="knn",isomap_neigh=16,anchors=1500)
 
 	nb_points = size(input_coords)[2]

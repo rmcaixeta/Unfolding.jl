@@ -155,7 +155,22 @@ function _xyzguess(coords_to_allocate::AbstractArray{<:Number,2}, ref_coords::Ab
 end
 
 
-# Check error
+"""
+	unfold_error_ids(true_coords, transf_coords; nneigh=16, max_error=5)
+
+Unfolding distorts the original distances between neighbor points. This
+function give the IDs of the points above and below the `max_error` threshold.
+Returns a tuple of two arrays. The first array with the ID of points that passed
+the tests. The second array with the ID of points that failed during the tests.
+
+## Parameters:
+
+* `true_coords`   - coordinate matrix of shape (3,:) of the points before unfolding.
+* `transf_coords` - coordinate matrix of shape (3,:) of the points after unfolding.
+* `nneigh`        - number of nearest neighbors used to make the validations.
+* `max_error`     - the maximum accepted absolute difference of the distances
+  for the closest neighbors after unfolding.
+"""
 function unfold_error_ids(true_coords::AbstractArray{<:Number,2},
 	 transf_coords::AbstractArray{<:Number,2};
 	 nneigh=16, max_error=5)
@@ -187,7 +202,20 @@ function unfold_error_ids(true_coords::AbstractArray{<:Number,2},
 
 end
 
+"""
+	unfold_error_dists(true_coords, transf_coords; nneigh=16, plotname=nothing)
 
+Unfolding distorts the original distances between neighbor points. This
+function output the difference of the expected distance for each pair analyzed.
+Optionally output a boxplot named `plotname`.png with these errors.
+
+## Parameters:
+
+* `true_coords`   - coordinate matrix of shape (3,:) of the points before unfolding.
+* `transf_coords` - coordinate matrix of shape (3,:) of the points after unfolding.
+* `nneigh`        - number of nearest neighbors used to make the validations.
+* `plotname`      - filename (may include path) of the output PNG file with the boxplot.
+"""
 function unfold_error_dists(true_coords::AbstractArray{<:Number,2},
 	 transf_coords::AbstractArray{<:Number,2};
 	 nneigh=16, plotname=nothing)

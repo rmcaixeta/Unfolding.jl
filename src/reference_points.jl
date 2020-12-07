@@ -1,5 +1,16 @@
 
-# Skeletonization
+"""
+    ref_surface_from_blocks(blocks; axis=["X","Y","Z"])
+
+Extract the mid-surface points that split the informed block model in two.
+Returns a coordinate matrix (3,:) with the reference points for unfolding.
+
+## Parameters:
+
+* `blocks` - coordinate matrix (3,:) of the regular blocks centroids.
+* `axis`   - a string or list of strings informing the axes that will be scanned
+  to extract reference points. Defaults to ["X","Y","Z"].
+"""
 function ref_surface_from_blocks(blocks::AbstractArray{<:Number,2};
 	 axis=["X","Y","Z"])
 
