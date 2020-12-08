@@ -45,10 +45,10 @@ function unfold(ref_pts::AbstractArray{<:Number,2},
 	# Get initial guess
 	normals_neigh = isomap_search=="knn" ? isomap_neigh : 25
 	ref_normals = _normals(ref_pts,normals_neigh)
-	xyz_finals = _xyzguess(input_domain, ref_pts[:,good], ref_surf_transf[:,good], ref_normals[:,good])
+	xyz_finals = _xyzguess(input_domain, view(ref_pts,:,good), view(ref_surf_transf,:,good), view(ref_normals,:,good))
 
 	# Allocating points in random chunks
-	shuffled_ids = shuffle(1:size(input_domain)[2])
+	shuffled_ids = shuffle(1:size(input_domain,2))
 	ids_to_loop = collect(Iterators.partition(shuffled_ids, Int(floor(length(shuffled_ids)/nb_chunks))))
 
 	for (i,ids) in enumerate(ids_to_loop)
@@ -60,14 +60,14 @@ function unfold(ref_pts::AbstractArray{<:Number,2},
 		if i>1
 
 			ref_ids = [ids_to_loop[x][y] for x in 1:(i-1) for y in 1:length(ids_to_loop[x])]
-			good2, bad2 = unfold_error_ids(input_domain[:,ref_ids], xyz_finals[:,ref_ids], nneigh=neighs_to_valid, max_error=max_error)
+			good2, bad2 = unfold_error_ids(view(input_domain,:,ref_ids), view(xyz_finals,:,ref_ids), nneigh=neighs_to_valid, max_error=max_error)
 
-			known_coords = hcat(known_coords,input_domain[:,ref_ids][:,good2])
-			known_tcoords = hcat(known_tcoords,xyz_finals[:,ref_ids][:,good2])
+			known_coords = hcat(known_coords,view(view(input_domain,:,ref_ids),:,good2))
+			known_tcoords = hcat(known_tcoords,view(view(xyz_finals,:,ref_ids),:,good2))
 			ids_to_opt = unique(append!(Array{Int}(ids),Array{Int}(view(ref_ids,bad2))))
 		end
 
-		out_transf_coords = _opt(known_coords, known_tcoords, input_domain[:,ids_to_opt], xyzguess=xyz_finals[:,ids_to_opt], opt_neigh=neighs_to_valid)
+		out_transf_coords = _opt(known_coords, known_tcoords, view(input_domain,:,ids_to_opt), xyzguess=view(xyz_finals,:,ids_to_opt), opt_neigh=neighs_to_valid)
 		xyz_finals[:,ids_to_opt] .= out_transf_coords
 	end
 

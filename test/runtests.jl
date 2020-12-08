@@ -27,9 +27,9 @@ using Test
         df_block[:,c] = unf_block[i,:]
     end
 
-    data_to_vtk(unf_samp,"test_out_vtk",[(string("test",x),[rand() for i in 1:size(unf_samp)[2]]) for x in 1:4])
+    data_to_vtk(unf_samp,"test_out_vtk",[(string("test",x),[rand() for i in 1:size(unf_samp,2)]) for x in 1:4])
     data_to_csv(unf_samp,"test_out_csv",["X","Y","Z"])
-    #error = unfold_error_dists(hcat(input_samp,input_block), hcat(unf_samp,unf_block), nneigh=8, plotname="test_boxplot")
+    error = unfold_error_dists(hcat(input_samp,input_block), hcat(unf_samp,unf_block), nneigh=8)
 
     good, bad = unfold_error_ids(hcat(input_samp,input_block), hcat(unf_samp,unf_block))
     @test length(good)>50*length(bad)

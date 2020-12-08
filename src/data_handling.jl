@@ -20,7 +20,7 @@ function coordinate_matrix(x; columns=nothing)
 
 	x = typeof(x)<:Matrix{<:Number} ? x : Matrix{Float64}(x)
 	x = (shape[2]==3 && shape[1]!=3) ? permutedims(x) : x
-	return x
+	x
 end
 
 """
@@ -46,7 +46,7 @@ properties are passed via an array of tuples `extra_props`, where the first item
 of the tuple is the column name and the second is an array with the property values.
 """
 function data_to_vtk(coords::AbstractArray{<:Number,2},outname::String,extra_props=nothing)
-	verts = [MeshCell( VTKCellTypes.VTK_VERTEX, [i]) for i in 1:size(coords)[2] ]
+	verts = [MeshCell( VTKCellTypes.VTK_VERTEX, [i]) for i in 1:size(coords,2) ]
 	outfiles = vtk_grid(outname,coords,(verts)) do vtk
 		if extra_props!=nothing
 			for (name,prop) in extra_props
@@ -55,9 +55,4 @@ function data_to_vtk(coords::AbstractArray{<:Number,2},outname::String,extra_pro
 		end
 	end
 
-end
-
-function _make_boxplot(error::AbstractArray,plotname::String)
-	fig = boxplot(["Unfolding error"], error)
-	savefig(plotname)
 end

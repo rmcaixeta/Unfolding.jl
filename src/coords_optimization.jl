@@ -12,22 +12,9 @@ function _opt(points_known_true::AbstractArray{<:Number,2},
     tree = BallTree(points_known_true)
     idxs, dists = knn(tree, points_to_transf, opt_neigh, true)
 
-	#out_coords = @distributed (hcat) for i in 1:length(idxs)
-	#	locs = points_known_transf[:,idxs[i]]
-    #    d = dists[i]
-	#	initial_guess = points_known_transf[:,idxs[i][1]]
-	#	if length(xyzguess)>1
-	#		initial_guess = xyzguess[:,i]
-	#	end
-	#
-    #    opt = optimize(x->_mse_coords(x, locs, d), initial_guess)#, LBFGS())
-    #    res = Optim.minimizer(opt)
-    #    res
-	#end
-
 	out_coords = zeros(Float64,size(points_to_transf))
 	Threads.@threads for i in 1:length(idxs)
-		locs = points_known_transf[:,idxs[i]]
+		locs = view(points_known_transf,:,idxs[i])
         d = dists[i]
 		initial_guess = points_known_transf[:,idxs[i][1]]
 		if length(xyzguess)>1
@@ -38,9 +25,7 @@ function _opt(points_known_true::AbstractArray{<:Number,2},
         res = Optim.minimizer(opt)
         out_coords[:,i] .= res
 	end
-
-   return out_coords
-
+    out_coords
 end
 
 
@@ -57,16 +42,16 @@ function _normals(ref_surf::AbstractArray{<:Number,2},nneigh::Number)
 	last = nothing
 
 	for i in 1:length(idxs)
-		pcapts = standardize(ZScoreTransform, ref_surf[:,idxs[i]], dims=2, scale=false)
-		M = fit(PCA, pcapts, maxoutdim=3, pratio=1)
+		#pcapts = standardize(ZScoreTransform, ref_surf[:,idxs[i]], dims=2, scale=false)
+		M = fit(PCA, view(ref_surf, :, idxs[i]), maxoutdim=3, pratio=1)
 		ev = projection(M)
 
-		if size(ev)[2]>=3
-			last = ev[:,3]
-			ref_normals[:,i] .= ev[:,3]
-		elseif size(ev)[2]==2
-			last = cross(ev[:,1],ev[:,2])
-			ref_normals[:,i] .= cross(ev[:,1],ev[:,2])
+		if size(ev,2)>=3
+			last = view(ev,:,3)
+			ref_normals[:,i] .= last
+		elseif size(ev,2)==2
+			last = cross(view(ev,:,1),view(ev,:,2))
+			ref_normals[:,i] .= last
 		else # not best way to deal with 1 PC
 			if last==nothing
 				ref_normals[:,i] .= [0.,0.,1.]
@@ -97,7 +82,7 @@ function _normals(ref_surf::AbstractArray{<:Number,2},nneigh::Number)
 	end
 
 	for i in unique(to_loop)
-		X = ref_normals[:,idxs[i]]
+		X = view(ref_normals,:,idxs[i])
 		Y = fill(ref_normals[1,i],size(X))
 		Y[2,:] .= ref_normals[2,i]
 		Y[3,:] .= ref_normals[3,i]
@@ -105,18 +90,18 @@ function _normals(ref_surf::AbstractArray{<:Number,2},nneigh::Number)
 		ref_normals[:,idxs[i][CD .> 1]] .*= -1.0
 	end
 
-	return ref_normals
+	ref_normals
 end
 
 # Error function
-function _mse_coords(x::Array{Float64,1}, locations::AbstractArray{<:Number,2}, distances::Array{Float64,1})
+function _mse_coords(x::AbstractArray{Float64,1}, locations::AbstractArray{<:Number,2}, distances::AbstractArray{Float64,1})
     mse = 0.0
     for k in 1:length(distances)
-        loc, d = [locations[:,k],distances[k]]
+        loc, d = [view(locations,:,k),distances[k]]
         distance_calculated = euclidean([x[1],x[2],x[3]],loc)
         mse += (distance_calculated - d)^2
     end
-    return mse / length(distances)
+    mse / length(distances)
 end
 
 # Guess initial XYZ
@@ -136,9 +121,9 @@ function _xyzguess(coords_to_allocate::AbstractArray{<:Number,2}, ref_coords::Ab
 
 		for x in 1:length(idxs)
 			filt = idxs[x][1]
-			refs_coords = ref_coords[:,filt]
-			refn_coords = ref_surf_normals[:,filt]
-			ref_vect = coords_to_allocate[:,x]-refs_coords
+			refs_coords = view(ref_coords,:,filt)
+			refn_coords = view(ref_surf_normals,:,filt)
+			ref_vect = view(coords_to_allocate,:,x)-refs_coords
 			dotn_val = dot(refn_coords,ref_vect)
 			if dotn_val<0
 				xyzguess[3,x] = -1*dists[x][1]
@@ -184,7 +169,7 @@ function unfold_error_ids(true_coords::AbstractArray{<:Number,2},
 	for x in 1:length(idxs)
 		tdists = zeros(Float64,size(idxs[x]))
 		for y in length(idxs[x])
-			tdists[y] = euclidean(transf_coords[:,x],transf_coords[:,idxs[x][y]])
+			tdists[y] = euclidean(view(transf_coords,:,x),view(transf_coords,:,idxs[x][y]))
 		end
 		tdists .-= dists[x]
 		tdists .= abs.(tdists)
@@ -197,28 +182,25 @@ function unfold_error_ids(true_coords::AbstractArray{<:Number,2},
 	end
 
 	bad = unique(bad_ids)
-	good = setdiff(Array(1:size(true_coords)[2]),bad)
-	return good,bad
-
+	good = setdiff(Array(1:size(true_coords,2)),bad)
+	good,bad
 end
 
 """
-	unfold_error_dists(true_coords, transf_coords; nneigh=16, plotname=nothing)
+	unfold_error_dists(true_coords, transf_coords; nneigh=16)
 
 Unfolding distorts the original distances between neighbor points. This
 function output the difference of the expected distance for each pair analyzed.
-Optionally output a boxplot named `plotname`.png with these errors.
+Can be used as input to boxplot to verify distortions.
 
 ## Parameters:
 
 * `true_coords`   - coordinate matrix of shape (3,:) of the points before unfolding.
 * `transf_coords` - coordinate matrix of shape (3,:) of the points after unfolding.
 * `nneigh`        - number of nearest neighbors used to make the validations.
-* `plotname`      - filename (may include path) of the output PNG file with the boxplot.
 """
 function unfold_error_dists(true_coords::AbstractArray{<:Number,2},
-	 transf_coords::AbstractArray{<:Number,2};
-	 nneigh=16, plotname=nothing)
+	 transf_coords::AbstractArray{<:Number,2}; nneigh=16)
 
 	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
     tree = BallTree(true_coords)
@@ -229,7 +211,7 @@ function unfold_error_dists(true_coords::AbstractArray{<:Number,2},
 	for x in 1:length(idxs)
 		tdists = zeros(Float64,size(idxs[x]))
 		for y in length(idxs[x])
-			tdists[y] = euclidean(transf_coords[:,x],transf_coords[:,idxs[x][y]])
+			tdists[y] = euclidean(view(transf_coords,:,x),view(transf_coords,:,idxs[x][y]))
 		end
 
 		tdists .-= dists[x]
@@ -238,9 +220,5 @@ function unfold_error_dists(true_coords::AbstractArray{<:Number,2},
 		append!(error,tdists[2:end])
 	end
 
-	if plotname!=nothing
-		_make_boxplot(error,plotname)
-	end
-
-	return error
+	error
 end

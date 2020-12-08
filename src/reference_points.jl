@@ -34,7 +34,7 @@ function ref_surface_from_blocks(blocks::AbstractArray{<:Number,2};
 		sec = setdiff([1,2,3],ax)
 
 	    for s in axis_coords
-	        section = blocks[:,blocks[ax,:] .== s]
+	        section = view(blocks,:,view(blocks,ax,:) .== s)
 
 	        min_i = minimum(section[sec[1],:])
 	        min_j = minimum(section[sec[2],:])
@@ -65,7 +65,7 @@ function ref_surface_from_blocks(blocks::AbstractArray{<:Number,2};
 	end
 	out_surf = permutedims(hcat(ref[1],ref[2],ref[3]))
 
-	return out_surf
+	out_surf
 
 end
 
@@ -77,18 +77,18 @@ function _remove_duplicates(coords::AbstractArray{<:Number,2};tol=0.01)
 	for g in 1:length(groups)
 		idx = groups[g]
 		if length(idx)==1
-			outcoords[:,g] .= dropdims(coords[:,idx],dims=2)
+			outcoords[:,g] .= dropdims(view(coords,:,idx),dims=2)
 		else
-			outcoords[:,g] .= mean!(outcoords[:,g],coords[:,idx])
+			outcoords[:,g] .= mean!(view(outcoords,:,g),view(coords,:,idx))
 		end
 	end
-	return outcoords
+	outcoords
 end
 
 function _get_resolution(ref_pts::AbstractArray{<:Number,2})
 
 	idxs, dists = _get_neighbors(ref_pts, "knn", 2)
 	closest_pt = [sum(x) for x in dists]
-	return quantile(closest_pt,0.75)
+	quantile(closest_pt,0.75)
 
 end
