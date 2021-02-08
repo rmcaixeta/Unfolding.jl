@@ -5,7 +5,7 @@ using DelimitedFiles
 using Distances
 using ImageMorphology:thinning
 using LightGraphs:dijkstra_shortest_paths,connected_components
-using LinearAlgebra:Diagonal,eigen,cross,dot
+using LinearAlgebra:Diagonal,Symmetric,eigen,cross,dot
 using MultivariateStats:dmat2gram,PCA,fit,projection
 using NearestNeighbors
 using Optim

@@ -24,10 +24,6 @@ function landmark_isomap(input_coords::AbstractArray{<:Number,2};isomap_search="
 
 	if use_anchors
 
-		#other_coords = @distributed (hcat) for i in 1:length(other_ids)
-		# 	_triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
-		#end
-
 		other_coords = zeros(Float64,(2,length(other_ids)))
 		Threads.@threads for i in 1:length(other_ids)
 			out = _triang(i,g,anchors,anchor_ids,other_ids,M1,M3)
@@ -105,7 +101,7 @@ function _anchors_mds(nb_points,anchor,g,anchor_ids,use_anchors)
 	end
 
 	G = dmat2gram(ADM)
-    F = eigen(G)
+    F = eigen(Symmetric(G))
     EM = (F.vectors[:,sortperm(F.values,rev=true)])[:,[1,2]]
     sq_eigenvals = sort(F.values,rev=true)[1:2].^0.5
     AM = Diagonal(sq_eigenvals)
@@ -115,8 +111,7 @@ function _anchors_mds(nb_points,anchor,g,anchor_ids,use_anchors)
 		# allocate another points
 		other_ids = setdiff(Array(1:nb_points),anchor_ids)
 		M1 = permutedims(EM)
-		M1[1,:] ./= sq_eigenvals[1]
-		M1[2,:] ./= sq_eigenvals[2]
+		M1 ./= reshape(sq_eigenvals,2,1)
 		M3 = zeros(Float64,anchor,1)
 		mean!(M3,ADM.^2)
 		return anchor_coords,other_ids,M1,M3
