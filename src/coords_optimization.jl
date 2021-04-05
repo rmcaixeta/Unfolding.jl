@@ -61,33 +61,38 @@ function _normals(ref_surf::AbstractArray{<:Number,2},nneigh::Number)
 		end
 	end
 
-	# Iterate through all normals and check for consistency
+	# Get a sequential path to visit all nodes
+	n = length(idxs)
 	ok = false
-	pre_loop = Array(1:length(idxs))
+	pre_loop = Array(1:n)
 	to_loop = Int64[]
 	visited = Int64[]
+	refx = Int64[]
 
-	xi = pre_loop[floor(Int,length(pre_loop)/2)]
+	xi = pre_loop[floor(Int,n/2)]
 	append!(visited,xi)
-	to_loop = union(to_loop, idxs[xi])
+	append!(to_loop, idxs[xi])
+	append!(refx, [xi for x in idxs[xi]])
 	extra_loop = setdiff(to_loop,visited)
 	while ok==false
-		xi = extra_loop[1]
-		append!(visited,xi)
-		to_loop = union(to_loop, idxs[xi])
+		xj = extra_loop[1]
+		append!(visited,xj)
+		append!(to_loop, idxs[xj])
+		append!(refx, [xj for x in idxs[xj]])
 		extra_loop = setdiff(to_loop,visited)
 		if length(extra_loop)==0
 			ok=true
 		end
 	end
 
-	for i in unique(to_loop)
-		X = view(ref_normals,:,idxs[i])
-		Y = fill(ref_normals[1,i],size(X))
-		Y[2,:] .= ref_normals[2,i]
-		Y[3,:] .= ref_normals[3,i]
-		CD = colwise(CosineDist(), X, Y)
-		ref_normals[:,idxs[i][CD .> 1]] .*= -1.0
+	ids_unique = unique(i -> to_loop[i], 1:length(to_loop))
+	path = [p=>q for (p,q) in zip(refx[ids_unique],to_loop[ids_unique])]
+
+	# Iterate through all normals and check for consistency
+	for x in 1:n
+		i, j = path[x]
+		d = evaluate(CosineDist(), ref_normals[:,i], ref_normals[:,j])
+		d >= 1.5 && (ref_normals[:,j] .*= -1)
 	end
 
 	ref_normals
