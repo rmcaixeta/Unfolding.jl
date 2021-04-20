@@ -14,7 +14,7 @@ It is necessary to install Julia to run this code. Installation instructions for
 After that, it is necessary to install the Unfolding package. Open a terminal, type `julia` to open the REPL and then install the package with the following command. Additionally, the CSV and DataFrames packages are also installed to run the examples in the sequence.
 
 ```julia
-using Pkg; Pkg.add("Unfolding"); Pkg.add("CSV"); Pkg.add("DataFrames")
+using Pkg; Pkg.add(["Unfolding","CSV","DataFrames"])
 ```
 
 ## Usage
@@ -46,11 +46,11 @@ df_samp = CSV.read("samples.csv", DataFrame)
 df_block = CSV.read("block_model.csv", DataFrame)
 
 # Get coordinate points as matrix
-input_block = coordinate_matrix( df_block, columns=["XC","YC","ZC"] )
-input_samp = coordinate_matrix( df_samp, columns=["X","Y","Z"] )
+input_block = coords( df_block, columns=["XC","YC","ZC"] )
+input_samp = coords( df_samp, columns=["X","Y","Z"] )
 
 # Get reference surface points for unfolding
-ref_surface = ref_surface_from_blocks(input_block)
+ref_surface = getreference(input_block)
 # Get transformed coordinates of blocks and samples after unfolding
 unf_block, unf_samp = unfold(ref_surface,input_block,input_samp)
 
@@ -65,11 +65,11 @@ CSV.write( "out_dh.csv", df_samp )
 CSV.write( "out_blks.csv", df_block )
 
 # Write output to VTK format
-data_to_vtk(unf_block,"out_blks")
-data_to_vtk(unf_samp,"out_dh")
+to_vtk(unf_block,"out_blks")
+to_vtk(unf_samp,"out_dh")
 ```
 
-The code can be saved in a textfile with `.jl` extension and be called in a terminal: `julia file.jl` or `julia -t 4 file.jl` to run faster using 4 threads (or any number of threads you want; this syntax is for threading in Julia 1.5). Or you can organize it in Jupyter notebooks (see instructions [here](https://github.com/JuliaLang/IJulia.jl)).
+The code can be saved in a textfile with `.jl` extension and be called in a terminal: `julia file.jl` or `julia -t 4 file.jl` to run faster using 4 threads (or any number of threads you want). Or you can organize it in notebooks.
 
 ### Python example (experimental)
 
@@ -102,7 +102,7 @@ input_block = df_block.to_numpy().T
 input_samp = df_samp.to_numpy().T
 
 # Get reference surface points for unfolding
-ref_surface = unf.ref_surface_from_blocks(input_block)
+ref_surface = unf.getreference(input_block)
 # Get transformed coordinates of blocks and samples after unfolding
 unf_block, unf_samp = unf.unfold(ref_surface,input_block,input_samp)
 
@@ -116,8 +116,8 @@ df_block.to_csv("out_blks.csv",index=False)
 df_samp.to_csv("out_samp.csv",index=False)
 
 # Write output to VTK format
-unf.data_to_vtk(unf_block,"out_blks")
-unf.data_to_vtk(unf_samp,"out_dh")
+unf.to_vtk(unf_block,"out_blks")
+unf.to_vtk(unf_samp,"out_dh")
 ```
 
 ### Results

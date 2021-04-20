@@ -21,12 +21,12 @@ include("reference_points.jl")
 include("unfold.jl")
 
 export
-    coordinate_matrix,
-    data_to_csv,
-    data_to_vtk,
+    coords,
+    error_dists,
+    error_ids,
+    getreference,
     landmark_isomap,
-    ref_surface_from_blocks,
-    unfold_error_dists,
-    unfold_error_ids,
+    to_csv,
+    to_vtk,
     unfold
 end

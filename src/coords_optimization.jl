@@ -1,9 +1,9 @@
 
 
 # Optimization coordinates
-function _opt(points_known_true::AbstractArray{<:Number,2},
-	points_known_transf::AbstractArray{<:Number,2},
-	points_to_transf::AbstractArray{<:Number,2};
+function _opt(points_known_true::AbstractMatrix,
+	points_known_transf::AbstractMatrix,
+	points_to_transf::AbstractMatrix;
 	xyzguess=[0],opt_neigh=16)
 
 	points_known_true = typeof(points_known_true)<:AbstractArray{Float64} ? points_known_true : convert(Array{Float64}, points_known_true)
@@ -31,7 +31,7 @@ end
 
 
 # Get surface normals
-function _normals(ref_surf::AbstractArray{<:Number,2},nneigh::Number)
+function _normals(ref_surf::AbstractMatrix,nneigh::Number)
 
 	ref_surf = typeof(ref_surf)<:AbstractArray{Float64} ? ref_surf : convert(Array{Float64}, ref_surf)
 	tree = BallTree(ref_surf)
@@ -99,7 +99,7 @@ function _normals(ref_surf::AbstractArray{<:Number,2},nneigh::Number)
 end
 
 # Error function
-function _mse_coords(x::AbstractArray{Float64,1}, locations::AbstractArray{<:Number,2}, distances::AbstractArray{Float64,1})
+function _mse_coords(x::AbstractArray{Float64,1}, locations::AbstractMatrix, distances::AbstractArray{Float64,1})
     mse = 0.0
     for k in 1:length(distances)
         loc, d = [view(locations,:,k),distances[k]]
@@ -110,8 +110,8 @@ function _mse_coords(x::AbstractArray{Float64,1}, locations::AbstractArray{<:Num
 end
 
 # Guess initial XYZ
-function _xyzguess(coords_to_allocate::AbstractArray{<:Number,2}, ref_coords::AbstractArray{<:Number,2},
-	 ref_transf_coords::AbstractArray{<:Number,2}, ref_surf_normals=nothing)
+function _xyzguess(coords_to_allocate::AbstractMatrix, ref_coords::AbstractMatrix,
+	 ref_transf_coords::AbstractMatrix, ref_surf_normals=nothing)
 
 	ref_coords = typeof(ref_coords)<:AbstractArray{Float64} ? ref_coords : convert(Array{Float64}, ref_coords)
 	coords_to_allocate = typeof(coords_to_allocate)<:AbstractArray{Float64} ? coords_to_allocate : convert(Array{Float64}, coords_to_allocate)
@@ -146,7 +146,7 @@ end
 
 
 """
-	unfold_error_ids(true_coords, transf_coords; nneigh=16, max_error=5)
+	error_ids(true_coords, transf_coords; nneigh=16, max_error=5)
 
 Unfolding distorts the original distances between neighbor points. This
 function give the IDs of the points above and below the `max_error` threshold.
@@ -155,14 +155,14 @@ the tests. The second array with the ID of points that failed during the tests.
 
 ## Parameters:
 
-* `true_coords`   - coordinate matrix of shape (3,:) of the points before unfolding.
-* `transf_coords` - coordinate matrix of shape (3,:) of the points after unfolding.
+* `true_coords`   - coordinate matrix of the points before unfolding.
+* `transf_coords` - coordinate matrix of the points after unfolding.
 * `nneigh`        - number of nearest neighbors used to make the validations.
 * `max_error`     - the maximum accepted absolute difference of the distances
   for the closest neighbors after unfolding.
 """
-function unfold_error_ids(true_coords::AbstractArray{<:Number,2},
-	 transf_coords::AbstractArray{<:Number,2};
+function error_ids(true_coords::AbstractMatrix,
+	 transf_coords::AbstractMatrix;
 	 nneigh=16, max_error=5)
 
 	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
@@ -192,7 +192,7 @@ function unfold_error_ids(true_coords::AbstractArray{<:Number,2},
 end
 
 """
-	unfold_error_dists(true_coords, transf_coords; nneigh=16)
+	error_dists(true_coords, transf_coords; nneigh=16)
 
 Unfolding distorts the original distances between neighbor points. This
 function output the difference of the expected distance for each pair analyzed.
@@ -200,12 +200,12 @@ Can be used as input to boxplot to verify distortions.
 
 ## Parameters:
 
-* `true_coords`   - coordinate matrix of shape (3,:) of the points before unfolding.
-* `transf_coords` - coordinate matrix of shape (3,:) of the points after unfolding.
+* `true_coords`   - coordinate matrix of the points before unfolding.
+* `transf_coords` - coordinate matrix of the points after unfolding.
 * `nneigh`        - number of nearest neighbors used to make the validations.
 """
-function unfold_error_dists(true_coords::AbstractArray{<:Number,2},
-	 transf_coords::AbstractArray{<:Number,2}; nneigh=16)
+function error_dists(true_coords::AbstractMatrix,
+	 transf_coords::AbstractMatrix; nneigh=16)
 
 	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
     tree = BallTree(true_coords)

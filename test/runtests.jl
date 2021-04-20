@@ -5,32 +5,32 @@ using Test
 
 @testset "Unfolding.jl" begin
     # Reading data
-    df_samp = CSV.read("samples.csv", DataFrame)
+    df_samps = CSV.read("samples.csv", DataFrame)
     df_block = CSV.read("block_model.csv", DataFrame)
     println("- Samples loaded")
 
     # Get coordinate points as matrix
-    input_block = coordinate_matrix( df_block, columns=["XC","YC","ZC"] )
-    input_samp = coordinate_matrix( df_samp, columns=["X","Y","Z"] )
+    input_block = coords(df_block, columns=["XC","YC","ZC"])
+    input_samps = coords(df_samps, columns=["X","Y","Z"])
 
     # Get reference surface points for unfolding
-    ref_surface = ref_surface_from_blocks(input_block, axis=["X","Y"])
+    ref_surface = getreference(input_block, axis=["X","Y"])
     println("- Reference surface extracted")
 
     # Get transformed coordinates of blocks and samples after unfolding
-    unf_block, unf_samp = unfold(ref_surface,input_block,input_samp)
+    unf_block, unf_samps = unfold(ref_surface, input_block, input_samps)
     println("- Unfolding finished")
 
     # Write new XT, YT and ZT columns with the transformed coordinates
     for (i,c) in enumerate([:XT,:YT,:ZT])
-        df_samp[:,c] = unf_samp[i,:]
+        df_samps[:,c] = unf_samps[i,:]
         df_block[:,c] = unf_block[i,:]
     end
 
-    data_to_vtk(unf_samp,"test_out_vtk",[(string("test",x),[rand() for i in 1:size(unf_samp,2)]) for x in 1:4])
-    data_to_csv(unf_samp,"test_out_csv",["X","Y","Z"])
-    error = unfold_error_dists(hcat(input_samp,input_block), hcat(unf_samp,unf_block), nneigh=8)
+    to_vtk(unf_samps,"test_out_vtk",[(string("test",x),[rand() for i in 1:size(unf_samps,2)]) for x in 1:4])
+    to_csv(unf_samps,"test_out_csv",["X","Y","Z"])
+    error = error_dists(hcat(input_samps,input_block), hcat(unf_samps,unf_block), nneigh=8)
 
-    good, bad = unfold_error_ids(hcat(input_samp,input_block), hcat(unf_samp,unf_block))
+    good, bad = error_ids(hcat(input_samps,input_block), hcat(unf_samps,unf_block))
     @test length(good)>50*length(bad)
 end
