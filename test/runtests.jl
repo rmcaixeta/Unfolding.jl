@@ -27,7 +27,7 @@ using Test
         df_block[:,c] = unf_block[i,:]
     end
 
-    to_vtk(unf_samps,"test_out_vtk",[(string("test",x),[rand() for i in 1:size(unf_samps,2)]) for x in 1:4])
+    to_vtk(unf_samps,"test_out_vtk",[("test$x",[rand() for i in 1:size(unf_samps,2)]) for x in 1:4])
     to_csv(unf_samps,"test_out_csv",["X","Y","Z"])
     error = error_dists(hcat(input_samps,input_block), hcat(unf_samps,unf_block), nneigh=8)
 

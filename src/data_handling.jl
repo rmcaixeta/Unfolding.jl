@@ -32,7 +32,7 @@ names are passed in `colnames` array.
 function to_csv(input_matrix::AbstractArray,outname::String,colnames)
 
 	out = length(size(input_matrix))==1 ? input_matrix : input_matrix'
-	open(string(outname,".csv"); write=true) do f
+	open("$outname.csv"; write=true) do f
 		write(f, string(join(colnames,","),"\n"))
 		writedlm(f, out, ',')
 	end

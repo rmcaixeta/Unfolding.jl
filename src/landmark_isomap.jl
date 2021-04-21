@@ -15,8 +15,8 @@ with the unfolded points.
 * `anchors` - number of anchors/landmark points for the dimensionality reduction.
 """
 function landmark_isomap(coords::AbstractMatrix; search="knn", neighval=16,
-	                     anchors=1500, dim=2)
-	n = size(coords, 2)
+	                     anchors=1500)
+	n, dim = size(coords, 2), 2
 	n < anchors && (anchors = n)
 
 	g, ianchors = graph_and_anchors(coords, search, neighval, anchors)
@@ -36,7 +36,7 @@ function landmark_isomap(coords::AbstractMatrix; search="knn", neighval=16,
 		tcoords[:,iothers] .= otcoords
 	else
 		M = fit(MDS, ADM, maxoutdim=dim, distances=true)
-		tcoords = dim == 2 ? vcat(transform(M),zeros(1, n)) : transform(M)
+		tcoords = vcat(transform(M),zeros(1, n))
 	end
  	tcoords
 end
@@ -66,7 +66,7 @@ function graph_and_anchors(ref_coords::AbstractMatrix, nhood, neigh_val, nanchor
 
 	g = SimpleWeightedGraph(Int.(src), Int.(dest), dwgt)
 	comps = length(connected_components(g))
-	@assert comps==1 string("$comps subgroups of isolated vertices, need to increase number of neighbors")
+	@assert comps==1 "$comps subgroups of isolated vertices, need to increase number of neighbors"
 
 	wgt = nhood=="inrange" ? [1/length(x) for x in idxs] : [mean(x) for x in dists]
 	ianchors = n > nanchors ? sort!(sample(1:n, Weights(wgt), nanchors, replace=false)) : collect(1:n)
@@ -93,7 +93,7 @@ function anchors_mds(ADM, dims)
     EM = (F.vectors[:,sorti])[:,1:dims]
     sq_eigenvals = sortλ[1:dims].^0.5
     AM = Diagonal(sq_eigenvals)
-    atcoords = dims == 2 ? vcat(permutedims(EM*AM),zeros(1,nx)) : permutedims(EM*AM)
+    atcoords = vcat(permutedims(EM*AM),zeros(1,nx))
 
 	# to use later for another points allocations
 	M1 = permutedims(EM)
@@ -106,5 +106,5 @@ end
 
 function triangulation(g::SimpleWeightedGraph, i, j, M1, M3)
 	M2 = dijkstra_shortest_paths(g, i).dists[j] .^ 2
-	size(M1,1) == 2 ? vcat(-0.5*M1*(M2-M3),0) : -0.5*M1*(M2-M3)
+	vcat(-0.5*M1*(M2-M3),0)
 end
