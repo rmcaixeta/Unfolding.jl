@@ -54,7 +54,8 @@ function getreference(blocks::AbstractMatrix; axis=["X","Y","Z"])
 	            if img[i[x],j[x]]==true
 	                io = (i[x]-1)*cells[sec[1]]+min_i
 	                jo = (j[x]-1)*cells[sec[2]]+min_j
-					append!(ref, [s, io, jo][[ax,sec[1],sec[2]]])
+					order = sortperm([ax,sec[1],sec[2]])
+					append!(ref, [s, io, jo][order])
 	            end
 	        end
 	    end
@@ -79,7 +80,7 @@ function remove_duplicates(coords::AbstractMatrix; tol=0.01)
 end
 
 function get_resolution(ref_pts::AbstractMatrix)
-	idxs, dists = _get_neighbors(ref_pts, "knn", 2)
+	idxs, dists = get_neighbors(ref_pts, "knn", 2)
 	closest_pt = [sum(x) for x in dists]
 	quantile(closest_pt,0.75)
 end

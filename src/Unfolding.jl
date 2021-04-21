@@ -1,17 +1,17 @@
 module Unfolding
 
-using Clustering:dbscan
+using Clustering: dbscan
 using DelimitedFiles
 using Distances
-using ImageMorphology:thinning
-using LightGraphs:dijkstra_shortest_paths,connected_components
-using LinearAlgebra:Diagonal,Symmetric,eigen,cross,dot
-using MultivariateStats:dmat2gram,PCA,fit,projection
+using ImageMorphology: thinning
+using LightGraphs: connected_components, dijkstra_shortest_paths
+using LinearAlgebra: Diagonal, Symmetric, cross, dot, eigen
+using MultivariateStats: PCA, dmat2gram, fit, projection
 using NearestNeighbors
 using Optim
 using Random
 using SimpleWeightedGraphs
-using StatsBase:mean,mean!,Weights,sample,quantile
+using StatsBase: Weights, mean, mean!, quantile, sample
 using WriteVTK
 
 include("coords_optimization.jl")

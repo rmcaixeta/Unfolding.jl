@@ -9,7 +9,7 @@ function _opt(points_known_true::AbstractMatrix,
 	points_known_true = typeof(points_known_true)<:AbstractArray{Float64} ? points_known_true : convert(Array{Float64}, points_known_true)
 	points_to_transf = typeof(points_to_transf)<:AbstractArray{Float64} ? points_to_transf : convert(Array{Float64}, points_to_transf)
 
-    tree = BallTree(points_known_true)
+    tree = KDTree(points_known_true)
     idxs, dists = knn(tree, points_to_transf, opt_neigh, true)
 
 	out_coords = zeros(Float64,size(points_to_transf))
@@ -34,7 +34,7 @@ end
 function _normals(ref_surf::AbstractMatrix,nneigh::Number)
 
 	ref_surf = typeof(ref_surf)<:AbstractArray{Float64} ? ref_surf : convert(Array{Float64}, ref_surf)
-	tree = BallTree(ref_surf)
+	tree = KDTree(ref_surf)
 	idxs, dists = knn(tree, ref_surf, nneigh, true)
 
 	ref_normals = zeros(Float64,size(ref_surf))
@@ -115,7 +115,7 @@ function _xyzguess(coords_to_allocate::AbstractMatrix, ref_coords::AbstractMatri
 
 	ref_coords = typeof(ref_coords)<:AbstractArray{Float64} ? ref_coords : convert(Array{Float64}, ref_coords)
 	coords_to_allocate = typeof(coords_to_allocate)<:AbstractArray{Float64} ? coords_to_allocate : convert(Array{Float64}, coords_to_allocate)
-	tree = BallTree(ref_coords)
+	tree = KDTree(ref_coords)
 	idxs, dists = knn(tree, coords_to_allocate, 1, true)
 
 	if ref_surf_normals==nothing
@@ -166,7 +166,7 @@ function error_ids(true_coords::AbstractMatrix,
 	 nneigh=16, max_error=5)
 
 	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
-    tree = BallTree(true_coords)
+    tree = KDTree(true_coords)
 	idxs, dists = knn(tree, true_coords, nneigh, true)
 
 	bad_ids = Int[]
@@ -208,7 +208,7 @@ function error_dists(true_coords::AbstractMatrix,
 	 transf_coords::AbstractMatrix; nneigh=16)
 
 	true_coords = typeof(true_coords)<:AbstractArray{Float64} ? true_coords : convert(Array{Float64}, true_coords)
-    tree = BallTree(true_coords)
+    tree = KDTree(true_coords)
 	idxs, dists = knn(tree, true_coords, nneigh, true)
 
 	error = Float64[]
