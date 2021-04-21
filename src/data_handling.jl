@@ -56,3 +56,16 @@ function to_vtk(coords::AbstractMatrix,outname::String,extra_props=nothing)
 	end
 
 end
+
+# get neighbors
+function get_neighbors(ref_coords::AbstractMatrix, nhood::String, neigh_val)
+	!(ref_coords[1] isa Float64) && (ref_coords = Float64.(ref_coords))
+	tree = KDTree(ref_coords)
+	if nhood=="knn"
+		idxs, dists = knn(tree, ref_coords, neigh_val, true)
+		idxs, dists
+	else
+		idxs = inrange(tree, ref_coords, neigh_val, true)
+		idxs, nothing
+	end
+end
