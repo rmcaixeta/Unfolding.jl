@@ -13,7 +13,6 @@ for unfolding.
   names of the three coordinates must be informed here (e.g. ["X","Y","Z"]).
 """
 function coords(x; columns=nothing)
-
 	x = columns==nothing ? x : x[:,[Symbol(v) for v in columns]]
 	shape = size(x)
 	@assert (shape[1]==3 || shape[2]==3) "3-D coordinate matrix should be informed"
@@ -30,7 +29,6 @@ Export the `input_matrix` as CSV table file named `outname`.csv. The column
 names are passed in `colnames` array.
 """
 function to_csv(input_matrix::AbstractArray,outname::String,colnames)
-
 	out = length(size(input_matrix))==1 ? input_matrix : input_matrix'
 	open("$outname.csv"; write=true) do f
 		write(f, string(join(colnames,","),"\n"))
@@ -58,14 +56,26 @@ function to_vtk(coords::AbstractMatrix,outname::String,extra_props=nothing)
 end
 
 # get neighbors
-function get_neighbors(ref_coords::AbstractMatrix, nhood::String, neigh_val)
-	!(ref_coords[1] isa Float64) && (ref_coords = Float64.(ref_coords))
-	tree = KDTree(ref_coords)
+function get_neighbors(origin::AbstractMatrix, target::AbstractMatrix,
+	                   nhood::String, neigh_val, calcdists=false)
+	tree = KDTree(origin)
 	if nhood=="knn"
-		idxs, dists = knn(tree, ref_coords, neigh_val, true)
+		idxs, dists = knn(tree, target, neigh_val, true)
 		idxs, dists
 	else
-		idxs = inrange(tree, ref_coords, neigh_val, true)
-		idxs, nothing
+		idxs = inrange(tree, target, neigh_val)
+		if calcdists
+			dists = Vector{Vector{Float64}}(undef, 0)
+			for i in 1:length(idxs)
+				d = [euclidean(view(target,:,i),view(origin,:,j)) for j in idxs[i]]
+				push!(dists,d)
+			end
+		else
+			dists = nothing
+		end
+		idxs, dists
 	end
 end
+
+get_neighbors(ref_coords::AbstractMatrix, nhood::String, neigh_val, calcdists=false) =
+	get_neighbors(ref_coords, ref_coords, nhood::String, neigh_val, calcdists)

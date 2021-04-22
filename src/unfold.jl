@@ -30,6 +30,11 @@ function unfold(ref_pts::AbstractMatrix, domain::AbstractMatrix,
 
 	@assert search in ["knn","inrange"] "invalid neighborhood type"
 
+	# conversions if necessary
+	!(ref_pts[1] isa Float64) && (ref_pts = Float64.(ref_pts))
+	!(domain[1] isa Float64) && (domain = Float64.(domain))
+	!isnothing(samps) && !(samps[1] isa Float64) && (samps = Float64.(samps))
+
 	# random seed
 	Random.seed!(seed)
 
@@ -40,43 +45,44 @@ function unfold(ref_pts::AbstractMatrix, domain::AbstractMatrix,
 	# do landmark isomap at reference points
 	unf_ref = landmark_isomap(ref_pts, search=search, neighval=neighval)
 	good, bad = error_ids(ref_pts, unf_ref, nneigh=8, max_error=resol)
-	if length(bad)>length(good)
+	if length(bad) > length(good)
 		good, bad = error_ids(ref_pts, unf_ref, nneigh=8, max_error=2*resol)
 	end
 
 	# Get initial guess
-	search == "inrange" && (neighval = 25)
-	normals = _normals(ref_pts, neighval)
-	unf_dom = _xyzguess(domain, view(ref_pts,:,good), view(unf_ref,:,good), view(normals,:,good))
+	normals, good = getnormals(ref_pts, search, neighval, good)
+	unf_dom = firstguess(domain, view(ref_pts,:,good), view(unf_ref,:,good), normals)
 
 	# Allocating points in random chunks
-	shuffled_ids = shuffle(1:size(domain,2))
-	ids_to_loop = collect(Iterators.partition(shuffled_ids, Int(floor(length(shuffled_ids)/nb_chunks))))
+	ndom = size(domain,2)
+	shuffled_ids = shuffle(1:ndom)
+	ids_to_loop = collect(Iterators.partition(shuffled_ids, ceil(Int, ndom/nb_chunks)))
 
-	for (i,ids) in enumerate(ids_to_loop)
+	for (i, ids) in enumerate(ids_to_loop)
 
 		known_orig = ref_pts[:,good]
 		known_unf = unf_ref[:,good]
 		ids_to_opt = ids
 
 		if i>1
-			ref_ids = [ids_to_loop[x][y] for x in 1:(i-1) for y in 1:length(ids_to_loop[x])]
+			ref_ids = vcat(ids_to_loop[1:(i-1)]...)
 			good2, bad2 = error_ids(view(domain,:,ref_ids), view(unf_dom,:,ref_ids), nneigh=neighs_to_valid, max_error=max_error)
 
 			known_orig = hcat(known_orig,view(view(domain,:,ref_ids),:,good2))
-			known_unf = hcat(known_unf,view(view(unf_dom,:,ref_ids),:,good2))
-			ids_to_opt = unique(append!(Array{Int}(ids),Array{Int}(view(ref_ids,bad2))))
+			known_unf  = hcat(known_unf,view(view(unf_dom,:,ref_ids),:,good2))
+			ids_to_opt = Int.(union(ids, view(ref_ids, bad2)))
 		end
 
-		unf_dom[:,ids_to_opt] .= _opt(known_orig, known_unf, view(domain,:,ids_to_opt),
-		    xyzguess=view(unf_dom,:,ids_to_opt), opt_neigh=neighs_to_valid)
+		unf_dom[:,ids_to_opt] .= opt(known_orig, known_unf, view(domain,:,ids_to_opt),
+		    guess=view(unf_dom,:,ids_to_opt), nneigh=neighs_to_valid)
 	end
 
-	if samps==nothing
-		unf_dom
-	else
-		xyz_guess = _xyzguess(samps, domain, unf_dom)
-		unf_samps = _opt(domain, unf_dom, samps, xyzguess=xyz_guess)
+	# unfold samples if informed; otherwise, return just the domain unfolded
+	if !isnothing(samps)
+		initguess = firstguess(samps, domain, unf_dom)
+		unf_samps = opt(domain, unf_dom, samps, guess=initguess)
 		unf_dom, unf_samps
+	else
+		unf_dom
 	end
 end

@@ -43,24 +43,15 @@ end
 
 function graph_and_anchors(ref_coords::AbstractMatrix, nhood, neigh_val, nanchors)
 	n = size(ref_coords,2)
-	idxs, dists = get_neighbors(ref_coords, nhood, neigh_val)
-	src, dest, dwgt = [Int64[], Int64[], Float64[]]
+	idxs, dists = get_neighbors(ref_coords, nhood, neigh_val, true)
+	src, dest, dwgt = Int64[], Int64[], Float64[]
 
-	if nhood=="knn"
-		for i in 1:n
-			for j in 2:neigh_val
-				push!(src, i)
-				push!(dest, idxs[i][j])
-				push!(dwgt, dists[i][j])
-			end
-		end
-	elseif nhood=="inrange"
-		for i in 1:n
-			for j in idxs[i][idxs[i].!=i]
-				push!(src, i)
-				push!(dest, j)
-				push!(dwgt, euclidean(view(ref_coords,:,i),view(ref_coords,:,j)))
-			end
+	for i in 1:n
+		for j in 1:length(idxs[i])
+			idxs[i][j] == i && continue
+			push!(src, i)
+			push!(dest, idxs[i][j])
+			push!(dwgt, dists[i][j])
 		end
 	end
 
