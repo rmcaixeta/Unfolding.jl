@@ -28,7 +28,7 @@ end
 Export the `input_matrix` as CSV table file named `outname`.csv. The column
 names are passed in `colnames` array.
 """
-function to_csv(input_matrix::AbstractArray,outname::String,colnames)
+function to_csv(input_matrix::AbstractArray,outname::String,colnames=["X","Y","Z"])
 	out = length(size(input_matrix))==1 ? input_matrix : input_matrix'
 	open("$outname.csv"; write=true) do f
 		write(f, string(join(colnames,","),"\n"))
@@ -43,7 +43,7 @@ Export the `input_matrix` as VTK points named `outname`.vtu. Optionally, extra
 properties are passed via an array of tuples `extra_props`, where the first item
 of the tuple is the column name and the second is an array with the property values.
 """
-function to_vtk(coords::AbstractMatrix,outname::String,extra_props=nothing)
+function to_vtk(coords::AbstractMatrix, outname::String, extra_props=nothing)
 	verts = [MeshCell( VTKCellTypes.VTK_VERTEX, [i]) for i in 1:size(coords,2) ]
 	outfiles = vtk_grid(outname,coords,(verts)) do vtk
 		if extra_props!=nothing
@@ -52,17 +52,17 @@ function to_vtk(coords::AbstractMatrix,outname::String,extra_props=nothing)
 			end
 		end
 	end
-
 end
 
 # get neighbors
 function get_neighbors(origin::AbstractMatrix, target::AbstractMatrix,
-	                   nhood::String, neigh_val, calcdists=false)
+	                   nhood::Symbol, neigh_val, calcdists=false)
+	@assert nhood in [:knn,:radius] "invalid neighborhood type"
 	tree = KDTree(origin)
-	if nhood=="knn"
+	if nhood==:knn
 		idxs, dists = knn(tree, target, neigh_val, true)
 		idxs, dists
-	else
+	elseif nhood==:radius
 		idxs = inrange(tree, target, neigh_val)
 		if calcdists
 			dists = Vector{Vector{Float64}}(undef, 0)
@@ -77,5 +77,5 @@ function get_neighbors(origin::AbstractMatrix, target::AbstractMatrix,
 	end
 end
 
-get_neighbors(ref_coords::AbstractMatrix, nhood::String, neigh_val, calcdists=false) =
-	get_neighbors(ref_coords, ref_coords, nhood::String, neigh_val, calcdists)
+get_neighbors(ref_coords::AbstractMatrix, nhood, neigh_val, calcdists=false) =
+	get_neighbors(ref_coords, ref_coords, nhood, neigh_val, calcdists)

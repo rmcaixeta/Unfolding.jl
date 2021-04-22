@@ -1,15 +1,13 @@
 
 
 # Optimization coordinates
-function opt(known_pts::AbstractMatrix, known_unf::AbstractMatrix,
-	          to_unf::AbstractMatrix; guess=[0], nneigh=16)
-
-	idxs, dists = get_neighbors(known_pts, to_unf, "knn", nneigh)
+function opt(known_pts, known_unf, to_unf, search, nneigh, guess=nothing)
+	idxs, dists = get_neighbors(known_pts, to_unf, search, nneigh)
 	out_coords  = zeros(Float64, size(to_unf))
 
 	Threads.@threads for i in 1:length(idxs)
 		locs = view(known_unf, :, idxs[i])
-		initguess = length(guess) > 1 ? guess[:,i] : known_unf[:,idxs[i][1]]
+		initguess = isnothing(guess) ? known_unf[:,idxs[i][1]] : guess[:,i]
         opt = optimize(x->_mse_coords(x, locs, dists[i]), initguess)
         res = Optim.minimizer(opt)
         out_coords[:,i] .= res
@@ -20,7 +18,7 @@ end
 
 
 # Get surface normals
-function getnormals(ref::AbstractMatrix, search::String, nneigh::Int, good)
+function getnormals(ref::AbstractMatrix, search, nneigh, good)
 	ref_surf = view(ref, :, good)
 	idxs, dists = get_neighbors(ref_surf, search, nneigh)
 	n = length(idxs)
@@ -89,10 +87,9 @@ function _mse_coords(x::AbstractArray{Float64,1}, locations::AbstractMatrix, dis
 end
 
 # Guess initial XYZ
-function firstguess(to_unf::AbstractMatrix, ref_pts::AbstractMatrix,
-    unf_ref::AbstractMatrix, ref_normals=nothing)
+function firstguess(to_unf, ref_pts, unf_ref, ref_normals=nothing)
 	# get the closest point as initial guess
-	idxs, dists = get_neighbors(ref_pts, to_unf, "knn", 1)
+	idxs, dists = get_neighbors(ref_pts, to_unf, :knn, 1)
 	n   = length(idxs)
 	ids = [idxs[x][1] for x in 1:n]
 	guess = unf_ref[:,ids]
@@ -113,10 +110,10 @@ end
 
 
 """
-	error_ids(true_coords, transf_coords; nneigh=16, max_error=5)
+	error_ids(true_coords, transf_coords; nneigh=16, maxerr=5)
 
 Unfolding distorts the original distances between neighbor points. This
-function give the IDs of the points above and below the `max_error` threshold.
+function give the IDs of the points above and below the `maxerr` threshold.
 Returns a tuple of two arrays. The first array with the ID of points that passed
 the tests. The second array with the ID of points that failed during the tests.
 
@@ -125,17 +122,13 @@ the tests. The second array with the ID of points that failed during the tests.
 * `true_coords`   - coordinate matrix of the points before unfolding.
 * `transf_coords` - coordinate matrix of the points after unfolding.
 * `nneigh`        - number of nearest neighbors used to make the validations.
-* `max_error`     - the maximum accepted absolute difference of the distances
+* `maxerr`     - the maximum accepted absolute difference of the distances
   for the closest neighbors after unfolding.
 """
-function error_ids(true_coords::AbstractMatrix,
-	 transf_coords::AbstractMatrix;
-	 nneigh=16, max_error=5)
+function error_ids(true_coords,	 transf_coords; nneigh=16, maxerr=5)
 
 	!(true_coords[1] isa Float64) && (true_coords = Float64.(true_coords))
-    tree = KDTree(true_coords)
-	idxs, dists = knn(tree, true_coords, nneigh, true)
-
+	idxs, dists = get_neighbors(true_coords, :knn, nneigh)
 	bad_ids = Int[]
 
 	for x in 1:length(idxs)
@@ -145,7 +138,7 @@ function error_ids(true_coords::AbstractMatrix,
 		end
 		tdists .-= dists[x]
 		tdists .= abs.(tdists)
-		ids = findall(tdists .> max_error)
+		ids = findall(tdists .> maxerr)
 
 		if length(ids)>0
 			push!(bad_ids,x)
@@ -173,8 +166,7 @@ Can be used as input to boxplot to verify distortions.
 """
 function error_dists(true_coords::AbstractMatrix, transf_coords::AbstractMatrix; nneigh=16)
 	!(true_coords[1] isa Float64) && (true_coords = Float64.(true_coords))
-    tree = KDTree(true_coords)
-	idxs, dists = knn(tree, true_coords, nneigh, true)
+	idxs, dists = get_neighbors(true_coords, :knn, nneigh)
 
 	error = Float64[]
 

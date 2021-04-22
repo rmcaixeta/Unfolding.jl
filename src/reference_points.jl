@@ -80,7 +80,7 @@ function remove_duplicates(coords::AbstractMatrix; tol=0.01)
 end
 
 function get_resolution(ref_pts::AbstractMatrix)
-	idxs, dists = get_neighbors(ref_pts, "knn", 2)
+	idxs, dists = get_neighbors(ref_pts, :knn, 2)
 	closest_pt = [sum(x) for x in dists]
 	quantile(closest_pt,0.75)
 end

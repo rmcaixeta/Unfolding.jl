@@ -10,6 +10,7 @@ using MultivariateStats: PCA, dmat2gram, fit, projection
 using NearestNeighbors
 using Optim
 using Random
+using Setfield
 using SimpleWeightedGraphs
 using StatsBase: Weights, mean, mean!, quantile, sample
 using WriteVTK
