@@ -59,14 +59,10 @@ function unfold(ref_pts::AbstractMatrix, domain::AbstractMatrix, samps=nothing;
 
 	# do landmark isomap at reference points
 	unf_ref = landmark_isomap(ref_pts, ipars.search, ipars.neigh, ipars.anchors)
-	good, bad = error_ids(ref_pts, unf_ref, :knn, 8, resol)
-	if length(bad) > length(good)
-		good, bad = error_ids(ref_pts, unf_ref, :knn, 8, 2*resol)
-	end
 
 	# get initial guess
-	normals, good = getnormals(ref_pts, ipars.search, ipars.neigh, good)
-	unf_dom = firstguess(domain, view(ref_pts,:,good), view(unf_ref,:,good), normals)
+	normals, good = getnormals(ref_pts, ipars.search, ipars.neigh)
+	unf_dom = firstguess(domain, view(ref_pts,:,good), view(unf_ref,:,good), view(normals,:,good))
 
 	# unfold points in random chunks
 	ndom = size(domain,2)

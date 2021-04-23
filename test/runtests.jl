@@ -35,5 +35,5 @@ using Test
     error     = errors(:dists, all_input, all_unf)
     good, bad = errors(:ids, all_input, all_unf)
 
-    @test length(good) > (10 * length(bad))
+    @test length(good) > (30 * length(bad))
 end

@@ -18,8 +18,7 @@ end
 
 
 # Get surface normals
-function getnormals(ref::AbstractMatrix, search, neigh, good)
-	ref_surf = view(ref, :, good)
+function getnormals(ref_surf::AbstractMatrix, search, neigh)
 	idxs, dists = get_neighbors(ref_surf, search, neigh)
 	n = length(idxs)
 
@@ -40,13 +39,14 @@ function getnormals(ref::AbstractMatrix, search, neigh, good)
 		end
 	end
 
-	# Get a sequential path to visit all nodes
-	pre_loop = setdiff(1:n, ignore)
+	# get a sequential path to visit all nodes
+	# might be possible to use unf indices to create a path in a simpler way in the future
+	good = setdiff(1:n, ignore)
 	ok = false
-	n  = length(pre_loop)
+	n  = length(good)
 	to_loop, visited, refx = Int64[], Int64[], Int64[]
 
-	xi = pre_loop[floor(Int,n/2)]
+	xi = good[floor(Int,n/2)]
 	append!(visited,xi)
 	append!(to_loop, idxs[xi])
 	append!(refx, [xi for x in idxs[xi]])
@@ -66,22 +66,20 @@ function getnormals(ref::AbstractMatrix, search, neigh, good)
 	path = [p=>q for (p,q) in zip(refx[ids_unique],to_loop[ids_unique])]
 
 	# Iterate through all normals and check for consistency
+	prev = Int[]
 	for x in 1:n
 		i, j = path[x]
 
-		ci, cj = view(ref, :, i), view(ref, :, j)
-		ni, nj = view(ref_normals, :, i), view(ref_normals, :, j)
-		px   = mean([ci,cj]) .+ 10
-		doti = sign(dot(ni, px-ci))
-		dotj = sign(dot(nj, px-cj))
-		invert = (doti != dotj) && !(0 in [doti,dotj])
-		invert && (ref_normals[:,j] .*= -1)
+		prev = union(prev,i)
+		chk = intersect(prev,idxs[j])
+		nx = length(chk)
 
-		# d = evaluate(CosineDist(), ref_normals[:,i], ref_normals[:,j])
-		# d >= 1.5 && (ref_normals[:,j] .*= -1)
+		d = [evaluate(CosineDist(), ref_normals[:,k], ref_normals[:,j]) for k in chk]
+		sum(d .>= 1.0) >= ceil(nx/2) && (ref_normals[:,j] .*= -1)
+		prev = union(prev,j)
 	end
 
-	ref_normals[:,pre_loop], good[pre_loop]
+	ref_normals, good
 end
 
 # Error function
