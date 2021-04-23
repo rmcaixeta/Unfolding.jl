@@ -18,7 +18,8 @@ using Test
     println("- Reference surface extracted")
 
     # Get transformed coordinates of blocks and samples after unfolding
-    unf_block, unf_samps = unfold(ref_surface, input_block, input_samps)
+    optim = (neigh=15,)
+    unf_block, unf_samps = unfold(ref_surface, input_block, input_samps, optim=optim)
     println("- Unfolding finished")
 
     # Write new XT, YT and ZT columns with the transformed coordinates
@@ -27,10 +28,12 @@ using Test
         df_block[:,c] = unf_block[i,:]
     end
 
-    to_vtk(unf_samps,"test_out_vtk",[("test$x",[rand() for i in 1:size(unf_samps,2)]) for x in 1:4])
-    to_csv(unf_samps,"test_out_csv",["X","Y","Z"])
-    error = error_dists(hcat(input_samps,input_block), hcat(unf_samps,unf_block), nneigh=8)
+    to_vtk("test_out_vtk", unf_samps, (test=rand(size(unf_samps,2)),))
 
-    good, bad = error_ids(hcat(input_samps,input_block), hcat(unf_samps,unf_block))
-    @test length(good)>50*length(bad)
+    all_input = hcat(input_samps,input_block)
+    all_unf   = hcat(unf_samps,unf_block)
+    error     = errors(:dists, all_input, all_unf)
+    good, bad = errors(:ids, all_input, all_unf)
+
+    @test length(good) > (30 * length(bad))
 end

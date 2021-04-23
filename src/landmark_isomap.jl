@@ -1,6 +1,6 @@
 
 """
-	landmark_isomap(coords; search="knn", neighval=16, anchors=1500)
+	landmark_isomap(coords, search=:knn, neigh=16, anchors=1500)
 
 This function runs Landmark Isomap at 3-D points and returns a coordinate matrix
 with the unfolded points.
@@ -8,18 +8,17 @@ with the unfolded points.
 ## Parameters:
 
 * `coords`  - coordinate matrix of the reference points.
-* `search`  - search type to build neighbors graph for Isomap ("knn" for
-  k-nearest neighbor or "inrange" for radius search)
-* `neighval`  - number of neighbors (for `search`="knn") or radius
-  distance (for `search`="inrange") to build neighbors graph for Isomap.
+* `search`  - search type to build neighbors graph for Isomap (:knn for
+  k-nearest neighbor or :radius for radius search)
+* `neigh`   - number of neighbors (for `search`=:knn) or radius
+  distance (for `search`=:radius) to build neighbors graph for Isomap.
 * `anchors` - number of anchors/landmark points for the dimensionality reduction.
 """
-function landmark_isomap(coords::AbstractMatrix; search="knn", neighval=16,
-	                     anchors=1500)
+function landmark_isomap(coords::AbstractMatrix, search=:knn, neigh=16, anchors=1500)
 	n, dim = size(coords, 2), 2
 	n < anchors && (anchors = n)
 
-	g, ianchors = graph_and_anchors(coords, search, neighval, anchors)
+	g, ianchors = graph_and_anchors(coords, search, neigh, anchors)
 	ADM = Array{Float64}(undef, (anchors, anchors))
 	dissmatrix!(ADM, g, ianchors)
 
@@ -41,26 +40,17 @@ function landmark_isomap(coords::AbstractMatrix; search="knn", neighval=16,
  	tcoords
 end
 
-function graph_and_anchors(ref_coords::AbstractMatrix, nhood, neigh_val, nanchors)
+function graph_and_anchors(ref_coords, nhood, neigh_val, nanchors)
 	n = size(ref_coords,2)
-	idxs, dists = get_neighbors(ref_coords, nhood, neigh_val)
-	src, dest, dwgt = [Int64[], Int64[], Float64[]]
+	idxs, dists = get_neighbors(ref_coords, nhood, neigh_val, true)
+	src, dest, dwgt = Int64[], Int64[], Float64[]
 
-	if nhood=="knn"
-		for i in 1:n
-			for j in 2:neigh_val
-				push!(src, i)
-				push!(dest, idxs[i][j])
-				push!(dwgt, dists[i][j])
-			end
-		end
-	elseif nhood=="inrange"
-		for i in 1:n
-			for j in idxs[i][idxs[i].!=i]
-				push!(src, i)
-				push!(dest, j)
-				push!(dwgt, euclidean(view(ref_coords,:,i),view(ref_coords,:,j)))
-			end
+	for i in 1:n
+		for j in 1:length(idxs[i])
+			idxs[i][j] == i && continue
+			push!(src, i)
+			push!(dest, idxs[i][j])
+			push!(dwgt, dists[i][j])
 		end
 	end
 
@@ -68,7 +58,7 @@ function graph_and_anchors(ref_coords::AbstractMatrix, nhood, neigh_val, nanchor
 	comps = length(connected_components(g))
 	@assert comps==1 "$comps subgroups of isolated vertices, need to increase number of neighbors"
 
-	wgt = nhood=="inrange" ? [1/length(x) for x in idxs] : [mean(x) for x in dists]
+	wgt = nhood==:radius ? [1/length(x) for x in idxs] : [mean(x) for x in dists]
 	ianchors = n > nanchors ? sort!(sample(1:n, Weights(wgt), nanchors, replace=false)) : collect(1:n)
 	g, ianchors
 end

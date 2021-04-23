@@ -9,7 +9,7 @@ Returns a coordinate matrix with the reference points for unfolding.
 
 * `blocks` - coordinate matrix of the regular blocks centroids.
 * `axis`   - axis or list of axis that will be scanned to extract reference
-  points. Defaults to ["X","Y","Z"]. Accepts strings and symbols.
+  points. Defaults to ["X","Y","Z"].
 """
 function getreference(blocks::AbstractMatrix; axis=["X","Y","Z"])
 	typeof(axis) in (String, Symbol) && (axis = [axis])
@@ -80,7 +80,7 @@ function remove_duplicates(coords::AbstractMatrix; tol=0.01)
 end
 
 function get_resolution(ref_pts::AbstractMatrix)
-	idxs, dists = get_neighbors(ref_pts, "knn", 2)
+	idxs, dists = get_neighbors(ref_pts, :knn, 2)
 	closest_pt = [sum(x) for x in dists]
 	quantile(closest_pt,0.75)
 end

@@ -10,6 +10,7 @@ using MultivariateStats: PCA, dmat2gram, fit, projection
 using NearestNeighbors
 using Optim
 using Random
+using Setfield
 using SimpleWeightedGraphs
 using StatsBase: Weights, mean, mean!, quantile, sample
 using WriteVTK
@@ -22,11 +23,9 @@ include("unfold.jl")
 
 export
     coords,
-    error_dists,
-    error_ids,
+    errors,
     getreference,
     landmark_isomap,
-    to_csv,
     to_vtk,
     unfold
 end
