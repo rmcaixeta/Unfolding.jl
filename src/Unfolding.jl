@@ -23,11 +23,9 @@ include("unfold.jl")
 
 export
     coords,
-    error_dists,
-    error_ids,
+    errors,
     getreference,
     landmark_isomap,
-    to_csv,
     to_vtk,
     unfold
 end

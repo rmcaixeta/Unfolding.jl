@@ -1,14 +1,14 @@
 
 
 # Optimization coordinates
-function opt(known_pts, known_unf, to_unf, search, nneigh, guess=nothing)
-	idxs, dists = get_neighbors(known_pts, to_unf, search, nneigh)
+function opt(known_pts, known_unf, to_unf, search, neigh, guess=nothing)
+	idxs, dists = get_neighbors(known_pts, to_unf, search, neigh, true)
 	out_coords  = zeros(Float64, size(to_unf))
 
 	Threads.@threads for i in 1:length(idxs)
 		locs = view(known_unf, :, idxs[i])
 		initguess = isnothing(guess) ? known_unf[:,idxs[i][1]] : guess[:,i]
-        opt = optimize(x->_mse_coords(x, locs, dists[i]), initguess)
+        opt = optimize(x->mse_coords(x, locs, dists[i]), initguess)
         res = Optim.minimizer(opt)
         out_coords[:,i] .= res
 	end
@@ -18,9 +18,9 @@ end
 
 
 # Get surface normals
-function getnormals(ref::AbstractMatrix, search, nneigh, good)
+function getnormals(ref::AbstractMatrix, search, neigh, good)
 	ref_surf = view(ref, :, good)
-	idxs, dists = get_neighbors(ref_surf, search, nneigh)
+	idxs, dists = get_neighbors(ref_surf, search, neigh)
 	n = length(idxs)
 
 	ref_normals = zeros(Float64, size(ref_surf))
@@ -68,19 +68,28 @@ function getnormals(ref::AbstractMatrix, search, nneigh, good)
 	# Iterate through all normals and check for consistency
 	for x in 1:n
 		i, j = path[x]
-		d = evaluate(CosineDist(), ref_normals[:,i], ref_normals[:,j])
-		d >= 1.5 && (ref_normals[:,j] .*= -1)
+
+		ci, cj = view(ref, :, i), view(ref, :, j)
+		ni, nj = view(ref_normals, :, i), view(ref_normals, :, j)
+		px   = mean([ci,cj]) .+ 10
+		doti = sign(dot(ni, px-ci))
+		dotj = sign(dot(nj, px-cj))
+		invert = (doti != dotj) && !(0 in [doti,dotj])
+		invert && (ref_normals[:,j] .*= -1)
+
+		# d = evaluate(CosineDist(), ref_normals[:,i], ref_normals[:,j])
+		# d >= 1.5 && (ref_normals[:,j] .*= -1)
 	end
 
 	ref_normals[:,pre_loop], good[pre_loop]
 end
 
 # Error function
-function _mse_coords(x::AbstractArray{Float64,1}, locations::AbstractMatrix, distances::AbstractArray{Float64,1})
+function mse_coords(x, locations, distances)
     mse = 0.0
     for k in 1:length(distances)
-        loc, d = [view(locations,:,k),distances[k]]
-        distance_calculated = euclidean([x[1],x[2],x[3]],loc)
+        loc, d = view(locations,:,k), distances[k]
+        distance_calculated = euclidean([x[1], x[2], x[3]], loc)
         mse += (distance_calculated - d)^2
     end
     mse / length(distances)
@@ -108,78 +117,76 @@ function firstguess(to_unf, ref_pts, unf_ref, ref_normals=nothing)
 	guess
 end
 
-
 """
-	error_ids(true_coords, transf_coords; nneigh=16, maxerr=5)
+	errors(mode, coords, unf_coords; search=:knn, neigh=16, maxerr=5)
 
 Unfolding distorts the original distances between neighbor points. This
-function give the IDs of the points above and below the `maxerr` threshold.
-Returns a tuple of two arrays. The first array with the ID of points that passed
-the tests. The second array with the ID of points that failed during the tests.
+function returns two types of results depending on `mode`.
+
+If `mode = :ids`, this gives the IDs of the points above and below the `maxerr`
+threshold as a tuple such that (ids_passed_the_tests, ids_not_passed_the_tests)
+
+If `mode = :dists`, this function output the difference of the expected distance
+for each pair analyzed in the neighborhood. Can be used as input in a boxplot to
+verify distortions.
 
 ## Parameters:
 
-* `true_coords`   - coordinate matrix of the points before unfolding.
-* `transf_coords` - coordinate matrix of the points after unfolding.
-* `nneigh`        - number of nearest neighbors used to make the validations.
+* `mode`       - type of error, :ids or :dists.
+* `coords`     - coordinate matrix of the points before unfolding.
+* `unf_coords` - coordinate matrix of the points after unfolding.
+* `search`     - type of neighborhood, :knn or :radius.
+* `neigh`      - number of neighbors or radius used to make the validations.
 * `maxerr`     - the maximum accepted absolute difference of the distances
-  for the closest neighbors after unfolding.
+  if mode = :ids.
 """
-function error_ids(true_coords,	 transf_coords; nneigh=16, maxerr=5)
+function errors(mode::Symbol, coords::AbstractMatrix, unf_coords::AbstractMatrix;
+	            search=:knn, neigh=16, maxerr=5)
+	idxs, dists = get_neighbors(coords, search, neigh, true)
+	if mode == :ids
+		error_ids(coords, unf_coords, search, neigh, maxerr)
+	elseif mode == :dists
+		error_dists(coords, unf_coords, search, neigh)
+	else
+		throw(ArgumentError("mode should be :ids or :dists"))
+	end
+end
 
-	!(true_coords[1] isa Float64) && (true_coords = Float64.(true_coords))
-	idxs, dists = get_neighbors(true_coords, :knn, nneigh)
+function error_ids(coords, unf_coords, search=:knn, neigh=16, maxerr=5)
+	idxs, dists = get_neighbors(coords, search, neigh, true)
 	bad_ids = Int[]
+	n = length(idxs)
 
-	for x in 1:length(idxs)
-		tdists = zeros(Float64,size(idxs[x]))
-		for y in length(idxs[x])
-			tdists[y] = euclidean(view(transf_coords,:,x),view(transf_coords,:,idxs[x][y]))
-		end
+	for x in 1:n
+		p0 = view(unf_coords,:,x)
+		tdists = [euclidean(p0, view(unf_coords,:,y)) for y in idxs[x]]
 		tdists .-= dists[x]
-		tdists .= abs.(tdists)
-		ids = findall(tdists .> maxerr)
+		ids = findall(abs.(tdists) .> maxerr)
 
-		if length(ids)>0
+		if length(ids) > 0
 			push!(bad_ids,x)
 			append!(bad_ids,idxs[x][ids])
 		end
 	end
 
-	bad = unique(bad_ids)
-	good = setdiff(Array(1:size(true_coords,2)),bad)
-	good,bad
+	bad  = unique(bad_ids)
+	good = setdiff(collect(1:n), bad)
+	good, bad
 end
 
-"""
-	error_dists(true_coords, transf_coords; nneigh=16)
-
-Unfolding distorts the original distances between neighbor points. This
-function output the difference of the expected distance for each pair analyzed.
-Can be used as input to boxplot to verify distortions.
-
-## Parameters:
-
-* `true_coords`   - coordinate matrix of the points before unfolding.
-* `transf_coords` - coordinate matrix of the points after unfolding.
-* `nneigh`        - number of nearest neighbors used to make the validations.
-"""
-function error_dists(true_coords::AbstractMatrix, transf_coords::AbstractMatrix; nneigh=16)
-	!(true_coords[1] isa Float64) && (true_coords = Float64.(true_coords))
-	idxs, dists = get_neighbors(true_coords, :knn, nneigh)
-
+function error_dists(coords, unf_coords, search=:knn, neigh=16)
+	!(coords[1] isa Float64) && (coords = Float64.(coords))
+	idxs, dists = get_neighbors(coords, search, neigh, true)
 	error = Float64[]
 
 	for x in 1:length(idxs)
-		tdists = zeros(Float64,size(idxs[x]))
-		for y in length(idxs[x])
-			tdists[y] = euclidean(view(transf_coords,:,x),view(transf_coords,:,idxs[x][y]))
-		end
-
+		p0 = view(unf_coords,:,x)
+		tdists = [euclidean(p0, view(unf_coords,:,y)) for y in idxs[x]]
 		tdists .-= dists[x]
 		tdists .= abs.(tdists)
+		mask = idxs[x] .!= x
 
-		append!(error,tdists[2:end])
+		append!(error,tdists[mask])
 	end
 
 	error

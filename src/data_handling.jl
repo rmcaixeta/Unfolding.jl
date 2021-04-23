@@ -13,42 +13,27 @@ for unfolding.
   names of the three coordinates must be informed here (e.g. ["X","Y","Z"]).
 """
 function coords(x; columns=nothing)
-	x = columns==nothing ? x : x[:,[Symbol(v) for v in columns]]
+	!isnothing(columns) && (x = x[:,Symbol.(columns)])
 	shape = size(x)
-	@assert (shape[1]==3 || shape[2]==3) "3-D coordinate matrix should be informed"
-
-	x = typeof(x)<:Matrix{<:Number} ? x : Matrix{Float64}(x)
-	x = (shape[2]==3 && shape[1]!=3) ? permutedims(x) : x
+	@assert (3 in shape) "3-D coordinate matrix should be informed"
+	!(x isa Matrix) && (x = Matrix{Float64}(x))
+	(shape[2]==3 && shape[1]!=3) && (x = permutedims(x))
 	x
 end
 
 """
-	to_csv(input_matrix, outname, colnames)
+	to_vtk(outname, coordinates, props)
 
-Export the `input_matrix` as CSV table file named `outname`.csv. The column
-names are passed in `colnames` array.
+Export the `coordinates` as VTK points named `outname`.vtu. Optionally, extra
+properties are passed via `props` as `NamedTuple` or `Dict`, where the first item
+is the property name and the second is an array with the property values.
 """
-function to_csv(input_matrix::AbstractArray,outname::String,colnames=["X","Y","Z"])
-	out = length(size(input_matrix))==1 ? input_matrix : input_matrix'
-	open("$outname.csv"; write=true) do f
-		write(f, string(join(colnames,","),"\n"))
-		writedlm(f, out, ',')
-	end
-end
-
-"""
-	to_vtk(coords, outname, extra_props)
-
-Export the `input_matrix` as VTK points named `outname`.vtu. Optionally, extra
-properties are passed via an array of tuples `extra_props`, where the first item
-of the tuple is the column name and the second is an array with the property values.
-"""
-function to_vtk(coords::AbstractMatrix, outname::String, extra_props=nothing)
-	verts = [MeshCell( VTKCellTypes.VTK_VERTEX, [i]) for i in 1:size(coords,2) ]
-	outfiles = vtk_grid(outname,coords,(verts)) do vtk
-		if extra_props!=nothing
-			for (name,prop) in extra_props
-				vtk[name] = prop
+function to_vtk(outname::String, coords::AbstractMatrix, props=nothing)
+	verts = [MeshCell(VTKCellTypes.VTK_VERTEX, [i]) for i in 1:size(coords,2)]
+	outfiles = vtk_grid(outname, coords, (verts)) do vtk
+		if !isnothing(props)
+			for (name,prop) in zip(keys(props), values(props))
+				vtk[string(name)] = prop
 			end
 		end
 	end
@@ -67,7 +52,8 @@ function get_neighbors(origin::AbstractMatrix, target::AbstractMatrix,
 		if calcdists
 			dists = Vector{Vector{Float64}}(undef, 0)
 			for i in 1:length(idxs)
-				d = [euclidean(view(target,:,i),view(origin,:,j)) for j in idxs[i]]
+				p1 = view(target,:,i)
+				d  = [euclidean(p1, view(origin,:,j)) for j in idxs[i]]
 				push!(dists,d)
 			end
 		else

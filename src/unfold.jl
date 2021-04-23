@@ -1,6 +1,5 @@
 """
-	unfold(ref_pts, domain, samps=nothing; search=:knn, neigh=16,
-	seed=1234567890, maxerr=5, neighs_to_valid=16, nchunks=4, reftol=0.01)
+	unfold(ref_pts, domain, samps=nothing; isomap=:default, optim=:default)
 
 Unfold the input points based on the reference points informed. Returns
 a coordinate matrix with the unfolded domain points. Or a tuple of two
@@ -8,27 +7,39 @@ matrices (unfolded domain and unfolded samples points).
 
 ## Parameters:
 
-* `ref_pts`         - coordinate matrix with the reference points
-  for unfolding
-* `domain`    - coordinate matrix with domain points for
-  unfolding (blocks or mesh points)
-* `samps`     - coordinate matrix of the sample points (optional)
-* `search`   - search type to build neighbors graph for Isomap (:knn for
+* `ref_pts` - coordinate matrix with the reference points for unfolding
+* `domain   - coordinate matrix with domain points for unfolding
+* `samps`   - coordinate matrix of the sample points (optional)
+* `isomap`  - additional parameters for isomap step; either :default or a
+  NamedTuple with the keys shown below
+* `optim`   - additional parameters for optimization step; either :default or a
+  NamedTuple with the keys shown below
+
+### `isomap` parameters:
+
+*Default:* isomap = (search=:knn, neigh=16, anchors=1500, reftol=0.01)
+* `search`  - search type to build neighbors graph for Isomap (:knn for
   k-nearest neighbor or :radius for radius search).
-* `neigh`    - number of neighbors (for `search`=:knn) or radius distance
-  (for `search`=:radius) to build neighbors graph for Isomap.
-* `seed`            - seed for random values used during the process.
-* `neighs_to_valid` - number of nearest neighbors to use for validations during
-  the process.
-* `maxerr`       - the maximum accepted absolute difference of the distances
-  for the closest neighbors after deformation.
-* `nchunks`       - number of rounds of optimization.
+* `neigh`   - number of neighbors (for search=:knn) or radius distance
+  (for search=:radius) to build neighbors graph for Isomap.
+* `anchors` - number of anchors for landmark isomap
+* `reftol`  - distance to which reference points are considered duplicates
+
+### `optim` parameters:
+
+*Default:* optim = (search=:knn, neigh=16, maxerr=5, nchunks=4)
+* `search`  - search type to optimize locally (:knn for k-nearest neighbor or
+  :radius for radius search).
+* `neigh`   - number of neighbors (for search=:knn) or radius distance
+  (for search=:radius) to local optimization.
+* `maxerr`  - the maximum accepted distortion for unfolding optimization.
+* `nchunks` - number of rounds of optimization.
 """
 function unfold(ref_pts::AbstractMatrix, domain::AbstractMatrix, samps=nothing;
 	isomap=:default, optim=:default)
 
 	# read isomap and optim parameters or assign the defaults below
-	ipars = (search=:knn, neigh=16, anchors=1500, seed=1234567890, reftol=0.01)
+	ipars = (search=:knn, neigh=16, anchors=1500, reftol=0.01)
 	opars = (search=:knn, neigh=16, maxerr=5, nchunks=4)
 
 	ipars = updatepars(ipars, isomap)
@@ -40,7 +51,7 @@ function unfold(ref_pts::AbstractMatrix, domain::AbstractMatrix, samps=nothing;
 	!isnothing(samps) && !(samps[1] isa Float64) && (samps = Float64.(samps))
 
 	# random seed
-	Random.seed!(ipars.seed)
+	Random.seed!(1234567890)
 
 	# pre-process reference points
 	ref_pts = remove_duplicates(ref_pts, tol=ipars.reftol)
@@ -48,9 +59,9 @@ function unfold(ref_pts::AbstractMatrix, domain::AbstractMatrix, samps=nothing;
 
 	# do landmark isomap at reference points
 	unf_ref = landmark_isomap(ref_pts, ipars.search, ipars.neigh, ipars.anchors)
-	good, bad = error_ids(ref_pts, unf_ref, nneigh=8, maxerr=resol)
+	good, bad = error_ids(ref_pts, unf_ref, :knn, 8, resol)
 	if length(bad) > length(good)
-		good, bad = error_ids(ref_pts, unf_ref, nneigh=8, maxerr=2*resol)
+		good, bad = error_ids(ref_pts, unf_ref, :knn, 8, 2*resol)
 	end
 
 	# get initial guess
@@ -74,8 +85,8 @@ function unfold(ref_pts::AbstractMatrix, domain::AbstractMatrix, samps=nothing;
 			extra_ids = vcat(chunks[1:(i-1)]...)
 			extra_org = view(domain,:,extra_ids)
 			extra_unf = view(unf_dom,:,extra_ids)
-			good_, bad_ = error_ids(extra_org, extra_unf, nneigh=opars.neigh,
-			                      maxerr=opars.maxerr)
+			good_, bad_ = error_ids(extra_org, extra_unf, opars.search,
+			                        opars.neigh, opars.maxerr)
 
 			known_org = hcat(known_org, view(extra_org, :, good_))
 			known_unf = hcat(known_unf, view(extra_unf, :, good_))
@@ -85,8 +96,8 @@ function unfold(ref_pts::AbstractMatrix, domain::AbstractMatrix, samps=nothing;
 		# unfold points
 		initguess = view(unf_dom, :, ids_to_unf)
 		to_unf    = view(domain, :, ids_to_unf)
-		unf_dom[:,ids_to_unf] .= opt(known_org, known_unf, to_unf, opars.search,
-		                             opars.neigh, initguess)
+		unf_dom[:,ids_to_unf] .= opt(known_org, known_unf, to_unf,
+		                             opars.search, opars.neigh, initguess)
 	end
 
 	# unfold samples if informed; otherwise, return just the domain unfolded
