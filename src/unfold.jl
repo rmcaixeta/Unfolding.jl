@@ -26,7 +26,7 @@ Returns a coordinate matrix with the unfolded points. Or a tuple of matrices if
 
 ### `optim` parameters:
 
-*Default:* optim = (search=:knn, neigh=16, maxerr=5, nchunks=4)
+*Default:* optim = (search=:knn, neigh=50, maxerr=5, nchunks=4)
 * `search`  - search type to optimize locally (:knn for k-nearest neighbor or
   :radius for radius search).
 * `neigh`   - number of neighbors (for search=:knn) or radius distance
@@ -39,7 +39,7 @@ function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix;
 
 	# read isomap and optim parameters or assign the defaults below
 	ipars = (search=:knn, neigh=16, anchors=1500, reftol=0.01)
-	opars = (search=:knn, neigh=16, maxerr=5, nchunks=4)
+	opars = (search=:knn, neigh=50, maxerr=5, nchunks=4)
 
 	ipars = updatepars(ipars, isomap)
 	opars = updatepars(opars, optim)
@@ -125,7 +125,7 @@ the unfolded points. Or a tuple of matrices if `to_unf` is a list of points.
 
 ### `optim` parameters:
 
-*Default:* optim = (search=:knn, neigh=16, maxerr=5, nchunks=1)
+*Default:* optim = (search=:knn, neigh=50, maxerr=5, nchunks=1)
 * `search`  - search type to optimize locally (:knn for k-nearest neighbor or
   :radius for radius search).
 * `neigh`   - number of neighbors (for search=:knn) or radius distance
@@ -137,7 +137,7 @@ function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix, unf_ref::AbstractMa
 	optim=:default)
 
 	# read optim parameters or assign the defaults below
-	opars = (search=:knn, neigh=16, maxerr=5, nchunks=2)
+	opars = (search=:knn, neigh=50, maxerr=5, nchunks=2)
 	opars = updatepars(opars, optim)
 
 	# conversions if necessary
