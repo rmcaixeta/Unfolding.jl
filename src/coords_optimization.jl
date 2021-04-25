@@ -1,13 +1,13 @@
 
 
 # Optimization coordinates
-function opt(known_pts, known_unf, to_unf, search, neigh, guess=nothing)
+function opt(known_pts, known_unf, to_unf, search, neigh, guess)
 	idxs, dists = get_neighbors(known_pts, to_unf, search, neigh, true)
 	out_coords  = zeros(Float64, size(to_unf))
 
 	Threads.@threads for i in 1:length(idxs)
 		locs = view(known_unf, :, idxs[i])
-		initguess = isnothing(guess) ? known_unf[:,idxs[i][1]] : guess[:,i]
+		initguess = guess[:,i]
         opt = optimize(x->mse_coords(x, locs, dists[i]), initguess)
         res = Optim.minimizer(opt)
         out_coords[:,i] .= res

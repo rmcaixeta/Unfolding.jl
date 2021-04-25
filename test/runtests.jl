@@ -18,8 +18,9 @@ using Test
     println("- Reference surface extracted")
 
     # Get transformed coordinates of blocks and samples after unfolding
-    optim = (neigh=15,)
-    unf_block, unf_samps = unfold(ref_surface, input_block, input_samps, optim=optim)
+    optim = (neigh=70,)
+    unf_block = unfold(input_block, ref_surface, optim=optim)
+    unf_samps = unfold(input_samps, input_block, unf_block, optim=optim)
     println("- Unfolding finished")
 
     # Write new XT, YT and ZT columns with the transformed coordinates
@@ -36,4 +37,8 @@ using Test
     good, bad = errors(:ids, all_input, all_unf)
 
     @test length(good) > (30 * length(bad))
+
+    println("- Quick test of unfold with multiple inputs")
+    s1, s2 = unfold([input_samps[:,1:80],input_samps[:,80:end]], ref_surface)
+    s1, s2 = unfold([input_samps[:,1:80],input_samps[:,80:end]], input_block, unf_block)
 end

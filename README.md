@@ -52,7 +52,7 @@ input_samp = coords( df_samp, columns=["X","Y","Z"] )
 # Get reference surface points for unfolding
 ref_surface = getreference(input_block)
 # Get transformed coordinates of blocks and samples after unfolding
-unf_block, unf_samp = unfold(ref_surface,input_block,input_samp)
+unf_block, unf_samp = unfold([input_block,input_samp], ref_surface)
 
 # Write new XT, YT and ZT columns with the transformed coordinates
 for (i,c) in enumerate([:XT,:YT,:ZT])
@@ -61,12 +61,12 @@ for (i,c) in enumerate([:XT,:YT,:ZT])
 end
 
 # Write output to CSV
-CSV.write( "out_dh.csv", df_samp )
-CSV.write( "out_blks.csv", df_block )
+CSV.write("out_dh.csv", df_samp )
+CSV.write("out_blks.csv", df_block )
 
 # Write output to VTK format
-to_vtk(unf_block,"out_blks")
-to_vtk(unf_samp,"out_dh")
+to_vtk("out_blks", unf_block)
+to_vtk("out_dh", unf_samp)
 ```
 
 The code can be saved in a textfile with `.jl` extension and be called in a terminal: `julia file.jl` or `julia -t 4 file.jl` to run faster using 4 threads (or any number of threads you want). Or you can organize it in notebooks.
@@ -104,7 +104,7 @@ input_samp = df_samp.to_numpy().T
 # Get reference surface points for unfolding
 ref_surface = unf.getreference(input_block)
 # Get transformed coordinates of blocks and samples after unfolding
-unf_block, unf_samp = unf.unfold(ref_surface,input_block,input_samp)
+unf_block, unf_samp = unf.unfold([input_block,input_samp], ref_surface)
 
 # Write new XT, YT and ZT columns with the transformed coordinates
 for i,c in enumerate(["XT","YT","ZT"]):
@@ -116,8 +116,8 @@ df_block.to_csv("out_blks.csv",index=False)
 df_samp.to_csv("out_samp.csv",index=False)
 
 # Write output to VTK format
-unf.to_vtk(unf_block,"out_blks")
-unf.to_vtk(unf_samp,"out_dh")
+unf.to_vtk("out_blks", unf_block)
+unf.to_vtk("out_dh", unf_samp)
 ```
 
 ### Results

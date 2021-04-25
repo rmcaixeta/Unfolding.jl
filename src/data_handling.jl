@@ -45,7 +45,8 @@ function get_neighbors(origin::AbstractMatrix, target::AbstractMatrix,
 	@assert nhood in [:knn,:radius] "invalid neighborhood type"
 	tree = KDTree(origin)
 	if nhood==:knn
-		idxs, dists = knn(tree, target, neigh_val, true)
+		nneigh = minimum([neigh_val, size(origin,2)])
+		idxs, dists = knn(tree, target, nneigh, true)
 		idxs, dists
 	elseif nhood==:radius
 		idxs = inrange(tree, target, neigh_val)
