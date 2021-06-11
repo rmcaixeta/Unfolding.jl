@@ -19,7 +19,7 @@ using Pkg; Pkg.add(["Unfolding","CSV","DataFrames"])
 
 ## Usage
 
-The algorithm is based on the author thesis (a paper is to be published soon). There are three possible workflows:
+The algorithm is based on [Caixeta & Costa (2021)](https://doi.org/10.1016/j.cageo.2021.104844). There are three possible workflows:
 
 * Extract reference points from a given block model. Run unfolding for any points using them.
 * Reference points are already available from other sources. Run unfolding for any points using them.
