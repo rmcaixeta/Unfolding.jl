@@ -4,7 +4,7 @@ using Clustering: dbscan
 using DelimitedFiles
 using Distances
 using ImageMorphology: thinning
-using LightGraphs: connected_components, dijkstra_shortest_paths
+using Graphs: connected_components, dijkstra_shortest_paths
 using LinearAlgebra: Diagonal, Symmetric, cross, dot, eigen
 using MultivariateStats: PCA, dmat2gram, fit, projection
 using NearestNeighbors
