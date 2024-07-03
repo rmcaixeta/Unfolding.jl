@@ -66,7 +66,7 @@ end
 
 # Average duplicate points
 function remove_duplicates(coords::AbstractMatrix; tol=0.01)
-	groups = [union(x.core_indices,x.boundary_indices) for x in dbscan(coords, tol)]
+	groups = [union(x.core_indices,x.boundary_indices) for x in dbscan(coords, tol).clusters]
 	outcoords = zeros(Float64,3,length(groups))
 	for g in 1:length(groups)
 		idx = groups[g]
