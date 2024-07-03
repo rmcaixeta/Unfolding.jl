@@ -1,7 +1,6 @@
 # Unfolding.jl
 
-[![Build Status](https://travis-ci.com/rmcaixeta/Unfolding.jl.svg?branch=master)](https://travis-ci.com/rmcaixeta/Unfolding.jl)
-[![Coverage](https://codecov.io/gh/rmcaixeta/Unfolding.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/rmcaixeta/Unfolding.jl)
+[![Build Status][build-img]][build-url] [![Coverage][codecov-img]][codecov-url]
 
 `Unfolding.jl` is a package written in Julia to perform unfolding of 3-D geometries. It was developed for geostatistical cases where complex 3-D domains are modeled and need to be unfolded for appropriate spatial analysis, estimations and simulations.
 
@@ -142,3 +141,9 @@ p.show()
 ## Unfolding documentation
 
 The documentation of the main functions are available as [docstrings](https://juliahub.com/docs/Unfolding)
+
+[build-img]: https://img.shields.io/github/actions/workflow/status/rmcaixeta/Unfolding.jl/CI.yml?branch=master
+[build-url]: https://github.com/rmcaixeta/Unfolding.jl/actions
+
+[codecov-img]: https://codecov.io/gh/rmcaixeta/Unfolding.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/rmcaixeta/Unfolding.jl
