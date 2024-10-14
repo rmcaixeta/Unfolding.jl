@@ -21,11 +21,5 @@ include("landmark_isomap.jl")
 include("reference_points.jl")
 include("unfold.jl")
 
-export
-    coords,
-    errors,
-    getreference,
-    landmark_isomap,
-    to_vtk,
-    unfold
+export coords, errors, getreference, landmark_isomap, to_vtk, unfold
 end
