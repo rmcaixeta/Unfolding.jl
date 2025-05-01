@@ -72,25 +72,22 @@ The code can be saved in a textfile with `.jl` extension and be called in a term
 
 ### Python example (experimental)
 
-Julia is not a widespread language yet. For those more familiar with Python, the Julia code can be called inside Python scripts.
-
-Julia still need to be installed before calling it in Python. Additionally, an extra Python library must be installed in this case:
+Julia is not a widespread language yet. For those more familiar with Python, the Julia code can be called inside Python scripts. An extra Python library must be installed in this case:
 
 ```python
-pip install julia
-import julia
-julia.install()
+pip install juliacall
 ```
 
 The data for the unfolding functions should be informed as Numpy arrays. Note that the input arrays are transposed because multidimensional arrays in Julia are stored in column-major order.
 
 ```python
 # Python example
-from julia import Julia
-Julia(compiled_modules=False) # excluding these first lines makes it run faster; but may crash in some systems
-
 import pandas as pd
-from julia import Unfolding as unf
+from juliacall import Main as jl
+
+# install julia package and load it
+jl.seval("import Pkg; Pkg.add([\"Unfolding\"])")
+jl.seval("using Unfolding")
 
 # Reading data
 df_block = pd.read_csv("block_model.csv",usecols=["XC","YC","ZC"])
@@ -101,9 +98,9 @@ input_block = df_block.to_numpy().T
 input_samp = df_samp.to_numpy().T
 
 # Get reference surface points for unfolding
-ref_surface = unf.getreference(input_block)
+ref_surface = jl.getreference(input_block)
 # Get transformed coordinates of blocks and samples after unfolding
-unf_block, unf_samp = unf.unfold([input_block,input_samp], ref_surface)
+unf_block, unf_samp = jl.unfold([input_block,input_samp], ref_surface)
 
 # Write new XT, YT and ZT columns with the transformed coordinates
 for i,c in enumerate(["XT","YT","ZT"]):
@@ -115,8 +112,8 @@ df_block.to_csv("out_blks.csv",index=False)
 df_samp.to_csv("out_samp.csv",index=False)
 
 # Write output to VTK format
-unf.to_vtk("out_blks", unf_block)
-unf.to_vtk("out_dh", unf_samp)
+jl.to_vtk("out_blks", unf_block)
+jl.to_vtk("out_dh", unf_samp)
 ```
 
 ### Results
