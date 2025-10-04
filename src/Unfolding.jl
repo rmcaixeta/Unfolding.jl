@@ -6,7 +6,7 @@ using Distances
 using ImageMorphology: thinning
 using Graphs: connected_components, dijkstra_shortest_paths
 using LinearAlgebra: Diagonal, Symmetric, cross, dot, eigen
-using MultivariateStats: PCA, dmat2gram, fit, projection
+using MultivariateStats: MDS, PCA, dmat2gram, fit, projection, transform
 using NearestNeighbors
 using Optim
 using Random

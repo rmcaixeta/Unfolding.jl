@@ -1,5 +1,5 @@
 """
-	unfold(ref, to_unf, samps=nothing; isomap=:default, optim=:default)
+	unfold(to_unf, ref; isomap=:default, optim=:default, normals=nothing)
 
 Unfold the input points `to_unf` based on the reference points informed in `ref`.
 Returns a coordinate matrix with the unfolded points. Or a tuple of matrices if
@@ -13,6 +13,7 @@ Returns a coordinate matrix with the unfolded points. Or a tuple of matrices if
   NamedTuple with the keys shown below
 * `optim`   - additional parameters for optimization step; either :default or a
   NamedTuple with the keys shown below
+* `normals` - normals matrix of the reference points; auto-calculated if not informed
 
 ### `isomap` parameters:
 
@@ -34,7 +35,7 @@ Returns a coordinate matrix with the unfolded points. Or a tuple of matrices if
 * `maxerr`  - the maximum accepted distortion for unfolding optimization.
 * `nchunks` - number of rounds of optimization.
 """
-function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix; isomap=:default, optim=:default)
+function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix; isomap=:default, optim=:default, normals=nothing)
 
   # read isomap and optim parameters or assign the defaults below
   ipars = (search=:knn, neigh=16, anchors=1500, reftol=0.01)
@@ -52,14 +53,17 @@ function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix; isomap=:default, op
 
   # pre-process reference points
   ref = remove_duplicates(ref, tol=ipars.reftol)
-  resol = get_resolution(ref)
 
   # do landmark isomap at reference points
   unf_ref = landmark_isomap(ref, ipars.search, ipars.neigh, ipars.anchors)
 
   # get initial guess
-  normals, good = getnormals(ref, ipars.search, ipars.neigh)
-  unf = firstguess(to_unf, view(ref, :, good), view(unf_ref, :, good), view(normals, :, good))
+  unf = if isnothing(normals)
+    estnormals, good = getnormals(ref, ipars.search, ipars.neigh)
+    firstguess(to_unf, view(ref, :, good), view(unf_ref, :, good), view(estnormals, :, good))
+  else
+    firstguess(to_unf, ref, unf_ref, normals)
+  end
 
   # unfold points in random chunks
   ndom = size(to_unf, 2)
@@ -69,8 +73,8 @@ function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix; isomap=:default, op
 
   for (i, ids) in enumerate(chunks)
     # only reference surface as conditioner
-    known_org = ref[:, good]
-    known_unf = unf_ref[:, good]
+    known_org = isnothing(normals) ? ref[:, good] : ref
+    known_unf = isnothing(normals) ? unf_ref[:, good] : unf_ref
     ids_to_unf = ids
 
     # add unfolded from previous chunks
@@ -94,16 +98,16 @@ function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix; isomap=:default, op
   unf
 end
 
-function unfold(to_unf::AbstractVector, ref::AbstractMatrix; isomap=:default, optim=:default)
+function unfold(to_unf::AbstractVector, ref::AbstractMatrix; isomap=:default, optim=:default, normals=nothing)
   merged_to_unf = reduce(hcat, to_unf)
-  unf = unfold(merged_to_unf, ref, isomap=isomap, optim=optim)
+  unf = unfold(merged_to_unf, ref; isomap, optim, normals)
   j_ = cumsum(size.(to_unf, 2))
   i_ = [i == 1 ? 1 : j_[i - 1] + 1 for i in 1:length(j_)]
   [unf[:, i:j] for (i, j) in zip(i_, j_)]
 end
 
 """
-	unfold(to_unf, ref, unf_ref; optim=:default)
+	unfold(to_unf, ref, unf_ref; optim=:default, normals=nothing)
 
 Unfold the input points `to_unf` based on points already unfolded `unf_ref` and
 their correspondent in the original space `ref`. Useful to unfold samples after
@@ -117,6 +121,7 @@ the unfolded points. Or a tuple of matrices if `to_unf` is a list of points.
 * `unf_ref` - coordinate matrix with the unfolded reference points
 * `optim`   - additional parameters for optimization step; either :default or a
   NamedTuple with the keys shown below
+* `normals` - normals matrix of the reference points; auto-calculated if not informed
 
 ### `optim` parameters:
 
@@ -128,7 +133,7 @@ the unfolded points. Or a tuple of matrices if `to_unf` is a list of points.
 * `maxerr`  - the maximum accepted distortion for unfolding optimization.
 * `nchunks` - number of rounds of optimization.
 """
-function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix, unf_ref::AbstractMatrix; optim=:default)
+function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix, unf_ref::AbstractMatrix; optim=:default, normals=nothing)
 
   # read optim parameters or assign the defaults below
   opars = (search=:knn, neigh=50, maxerr=5, nchunks=2)
@@ -142,7 +147,7 @@ function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix, unf_ref::AbstractMa
   shuffled_ids = shuffle(1:ndom)
   nchunks = ceil(Int, ndom / opars.nchunks)
   chunks = collect(Iterators.partition(shuffled_ids, nchunks))
-  unf = firstguess(to_unf, ref, unf_ref)
+  unf = firstguess(to_unf, ref, unf_ref, normals)
 
   for (i, ids) in enumerate(chunks)
     # only reference surface as conditioner
@@ -170,9 +175,9 @@ function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix, unf_ref::AbstractMa
   unf
 end
 
-function unfold(to_unf::AbstractVector, ref::AbstractMatrix, unf_ref::AbstractMatrix; optim=:default)
+function unfold(to_unf::AbstractVector, ref::AbstractMatrix, unf_ref::AbstractMatrix; optim=:default, normals=nothing)
   merged_to_unf = reduce(hcat, to_unf)
-  unf = unfold(merged_to_unf, ref, unf_ref, optim=optim)
+  unf = unfold(merged_to_unf, ref, unf_ref; optim, normals)
   j_ = cumsum(size.(to_unf, 2))
   i_ = [i == 1 ? 1 : j_[i - 1] + 1 for i in 1:length(j_)]
   [unf[:, i:j] for (i, j) in zip(i_, j_)]
