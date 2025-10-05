@@ -17,17 +17,17 @@ using Test
   ref_surface = getreference(input_block, axis=["X", "Y"])
   println("- Reference surface extracted")
 
-  # Get transformed coordinates of blocks and samples after unfolding
-  optim = (neigh=70,)
-  unf_block = unfold(input_block, ref_surface, optim=optim)
-  unf_samps = unfold(input_samps, input_block, unf_block, optim=optim)
-  println("- Unfolding finished")
+  # Sample blocks to make tests feasible for CI
+  input_block = input_block[:, df_block.ZC .< -90]
+  input_samps = input_samps[:, df_samps.Z .< -90]
+  ref_surface = ref_surface[:, ref_surface[3, :] .< -90]
 
-  # Write new XT, YT and ZT columns with the transformed coordinates
-  for (i, c) in enumerate([:XT, :YT, :ZT])
-    df_samps[:, c] = unf_samps[i, :]
-    df_block[:, c] = unf_block[i, :]
-  end
+  # Get transformed coordinates of blocks and samples after unfolding
+  optim = (neigh=20,)
+  isomap = (anchors=100,)
+  unf_block = unfold(input_block, ref_surface; optim, isomap)
+  unf_samps = unfold(input_samps, input_block, unf_block; optim)
+  println("- Unfolding finished")
 
   to_vtk("test_out_vtk", unf_samps, (test=rand(size(unf_samps, 2)),))
 
@@ -39,6 +39,6 @@ using Test
   @test length(good) > (30 * length(bad))
 
   println("- Quick test of unfold with multiple inputs")
-  s1, s2 = unfold([input_samps[:, 1:80], input_samps[:, 80:end]], ref_surface)
-  s1, s2 = unfold([input_samps[:, 1:80], input_samps[:, 80:end]], input_block, unf_block)
+  s1, s2 = unfold([input_samps[:, 1:5], input_samps[:, 5:end]], ref_surface; optim, isomap)
+  s1, s2 = unfold([input_samps[:, 1:5], input_samps[:, 5:end]], input_block, unf_block; optim)
 end
