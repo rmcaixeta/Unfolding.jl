@@ -17,13 +17,14 @@ Returns a coordinate matrix with the unfolded points. Or a tuple of matrices if
 
 ### `isomap` parameters:
 
-*Default:* isomap = (search=:knn, neigh=16, anchors=1500, reftol=0.01)
+*Default:* isomap = (search=:knn, neigh=16, anchors=1500, reftol=0.01, align_axis=:x)
 * `search`  - search type to build neighbors graph for Isomap (:knn for
   k-nearest neighbor or :radius for radius search).
 * `neigh`   - number of neighbors (for search=:knn) or radius distance
   (for search=:radius) to build neighbors graph for Isomap.
 * `anchors` - number of anchors for landmark isomap
 * `reftol`  - distance to which reference points are considered duplicates
+* `align_axis` - make :x or :y unfolded axis correlate well with original one
 
 ### `optim` parameters:
 
@@ -38,7 +39,7 @@ Returns a coordinate matrix with the unfolded points. Or a tuple of matrices if
 function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix; isomap=:default, optim=:default, normals=nothing)
 
   # read isomap and optim parameters or assign the defaults below
-  ipars = (search=:knn, neigh=16, anchors=1500, reftol=0.01)
+  ipars = (search=:knn, neigh=16, anchors=1500, reftol=0.01, align_axis=:x)
   opars = (search=:knn, neigh=50, maxerr=5, nchunks=4)
 
   ipars = updatepars(ipars, isomap)
@@ -55,7 +56,7 @@ function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix; isomap=:default, op
   ref = remove_duplicates(ref, tol=ipars.reftol)
 
   # do landmark isomap at reference points
-  unf_ref = landmark_isomap(ref, ipars.search, ipars.neigh, ipars.anchors)
+  unf_ref = landmark_isomap(ref, ipars.search, ipars.neigh, ipars.anchors, ipars.align_axis)
 
   # get initial guess
   unf = if isnothing(normals)
@@ -125,7 +126,7 @@ the unfolded points. Or a tuple of matrices if `to_unf` is a list of points.
 
 ### `optim` parameters:
 
-*Default:* optim = (search=:knn, neigh=50, maxerr=5, nchunks=1)
+*Default:* optim = (search=:knn, neigh=50, maxerr=5, nchunks=2)
 * `search`  - search type to optimize locally (:knn for k-nearest neighbor or
   :radius for radius search).
 * `neigh`   - number of neighbors (for search=:knn) or radius distance
@@ -136,7 +137,7 @@ the unfolded points. Or a tuple of matrices if `to_unf` is a list of points.
 function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix, unf_ref::AbstractMatrix; optim=:default, normals=nothing)
 
   # read optim parameters or assign the defaults below
-  opars = (search=:knn, neigh=50, maxerr=5, nchunks=2)
+  opars = (search=:knn, neigh=50, maxerr=5, nchunks=4)
   opars = updatepars(opars, optim)
 
   # conversions if necessary
@@ -181,6 +182,27 @@ function unfold(to_unf::AbstractVector, ref::AbstractMatrix, unf_ref::AbstractMa
   j_ = cumsum(size.(to_unf, 2))
   i_ = [i == 1 ? 1 : j_[i - 1] + 1 for i in 1:length(j_)]
   [unf[:, i:j] for (i, j) in zip(i_, j_)]
+end
+
+function unfold(ref::AbstractMatrix; isomap=:default)
+
+  # read isomap and optim parameters or assign the defaults below
+  ipars = (search=:knn, neigh=16, anchors=1500, reftol=0.01, align_axis=:x)
+
+  ipars = updatepars(ipars, isomap)
+
+  # conversions if necessary
+  !(ref[1] isa Float64) && (ref = Float64.(ref))
+
+  # random seed
+  Random.seed!(1234567890)
+
+  # pre-process reference points
+  ref = remove_duplicates(ref, tol=ipars.reftol)
+
+  # do landmark isomap at reference points
+  unf_ref = landmark_isomap(ref, ipars.search, ipars.neigh, ipars.anchors, ipars.align_axis)
+  ref, unf_ref
 end
 
 function updatepars(default, newpars)

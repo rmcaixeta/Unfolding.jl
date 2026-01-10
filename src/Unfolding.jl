@@ -12,7 +12,7 @@ using Optim
 using Random
 using Setfield
 using SimpleWeightedGraphs
-using StatsBase: Weights, mean, mean!, quantile, sample
+using StatsBase: Weights, cor, mean, mean!, quantile, sample
 using WriteVTK
 
 include("coords_optimization.jl")
