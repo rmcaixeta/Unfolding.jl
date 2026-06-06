@@ -17,13 +17,14 @@ Returns a coordinate matrix with the unfolded points. Or a tuple of matrices if
 
 ### `isomap` parameters:
 
-*Default:* isomap = (search=:knn, neigh=16, anchors=1500, reftol=0.01)
+*Default:* isomap = (search=:knn, neigh=16, anchors=1500, reftol=0.01, align_axis=:x)
 * `search`  - search type to build neighbors graph for Isomap (:knn for
   k-nearest neighbor or :radius for radius search).
 * `neigh`   - number of neighbors (for search=:knn) or radius distance
   (for search=:radius) to build neighbors graph for Isomap.
 * `anchors` - number of anchors for landmark isomap
 * `reftol`  - distance to which reference points are considered duplicates
+* `align_axis` - make :x or :y unfolded axis correlate well with original one
 
 ### `optim` parameters:
 
@@ -38,7 +39,7 @@ Returns a coordinate matrix with the unfolded points. Or a tuple of matrices if
 function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix; isomap=:default, optim=:default, normals=nothing)
 
   # read isomap and optim parameters or assign the defaults below
-  ipars = (search=:knn, neigh=16, anchors=1500, reftol=0.01)
+  ipars = (search=:knn, neigh=16, anchors=1500, reftol=0.01, align_axis=:x)
   opars = (search=:knn, neigh=50, maxerr=5, nchunks=4)
 
   ipars = updatepars(ipars, isomap)
@@ -55,46 +56,22 @@ function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix; isomap=:default, op
   ref = remove_duplicates(ref, tol=ipars.reftol)
 
   # do landmark isomap at reference points
-  unf_ref = landmark_isomap(ref, ipars.search, ipars.neigh, ipars.anchors)
+  unf_ref = landmark_isomap(ref, ipars.search, ipars.neigh, ipars.anchors, ipars.align_axis)
 
-  # get initial guess
-  unf = if isnothing(normals)
-    estnormals, good = getnormals(ref, ipars.search, ipars.neigh)
-    firstguess(to_unf, view(ref, :, good), view(unf_ref, :, good), view(estnormals, :, good))
-  else
-    firstguess(to_unf, ref, unf_ref, normals)
-  end
-
-  # unfold points in random chunks
-  ndom = size(to_unf, 2)
-  shuffled_ids = shuffle(1:ndom)
-  nchunks = ceil(Int, ndom / opars.nchunks)
-  chunks = collect(Iterators.partition(shuffled_ids, nchunks))
-
-  for (i, ids) in enumerate(chunks)
-    # only reference surface as conditioner
-    known_org = isnothing(normals) ? ref[:, good] : ref
-    known_unf = isnothing(normals) ? unf_ref[:, good] : unf_ref
-    ids_to_unf = ids
-
-    # add unfolded from previous chunks
-    if i > 1
-      extra_ids = vcat(chunks[1:(i - 1)]...)
-      extra_org = view(to_unf, :, extra_ids)
-      extra_unf = view(unf, :, extra_ids)
-      good_, bad_ = error_ids(extra_org, extra_unf, opars.search, opars.neigh, opars.maxerr)
-
-      known_org = hcat(known_org, view(extra_org, :, good_))
-      known_unf = hcat(known_unf, view(extra_unf, :, good_))
-      ids_to_unf = Int.(union(ids, view(extra_ids, bad_)))
-    end
-
-    # unfold points
-    initguess = view(unf, :, ids_to_unf)
-    chunk_to_unf = view(to_unf, :, ids_to_unf)
-    unf[:, ids_to_unf] .= opt(known_org, known_unf, chunk_to_unf, opars.search, opars.neigh, initguess)
-  end
-
+  # unfold other pts
+  displ = unf_ref .- ref
+	ttab = georef((I=displ[1,:], J=displ[2,:], K=displ[3,:],
+	               x=ref[1,:], y=ref[2,:], z=ref[3,:]), (:x,:y,:z))
+  
+  dom = georef((x=to_unf[1,:], y=to_unf[2,:], z=to_unf[3,:]), (:x,:y,:z))
+  dom = domain(dom)
+	
+	# displacement
+	uvw = mapreduce(hcat, [:I,:J,:K]) do ev
+		ttab |> Select(ev) |> InterpolateNeighbors(dom, model=IDW(1), maxneighbors=40)
+	end |> values
+	
+  unf = to_unf .+ [uvw.I uvw.J uvw.K]'
   unf
 end
 
@@ -125,7 +102,7 @@ the unfolded points. Or a tuple of matrices if `to_unf` is a list of points.
 
 ### `optim` parameters:
 
-*Default:* optim = (search=:knn, neigh=50, maxerr=5, nchunks=1)
+*Default:* optim = (search=:knn, neigh=50, maxerr=5, nchunks=2)
 * `search`  - search type to optimize locally (:knn for k-nearest neighbor or
   :radius for radius search).
 * `neigh`   - number of neighbors (for search=:knn) or radius distance
@@ -136,42 +113,26 @@ the unfolded points. Or a tuple of matrices if `to_unf` is a list of points.
 function unfold(to_unf::AbstractMatrix, ref::AbstractMatrix, unf_ref::AbstractMatrix; optim=:default, normals=nothing)
 
   # read optim parameters or assign the defaults below
-  opars = (search=:knn, neigh=50, maxerr=5, nchunks=2)
+  opars = (search=:knn, neigh=50, maxerr=5, nchunks=4)
   opars = updatepars(opars, optim)
 
   # conversions if necessary
   !(to_unf[1] isa Float64) && (to_unf = Float64.(to_unf))
-
-  # unfold points in random chunks
-  ndom = size(to_unf, 2)
-  shuffled_ids = shuffle(1:ndom)
-  nchunks = ceil(Int, ndom / opars.nchunks)
-  chunks = collect(Iterators.partition(shuffled_ids, nchunks))
-  unf = firstguess(to_unf, ref, unf_ref, normals)
-
-  for (i, ids) in enumerate(chunks)
-    # only reference surface as conditioner
-    known_org = ref
-    known_unf = unf_ref
-    ids_to_unf = ids
-
-    # add unfolded from previous chunks
-    if i > 1
-      extra_ids = vcat(chunks[1:(i - 1)]...)
-      extra_org = view(to_unf, :, extra_ids)
-      extra_unf = view(unf, :, extra_ids)
-      good_, bad_ = error_ids(extra_org, extra_unf, opars.search, opars.neigh, opars.maxerr)
-
-      known_org = hcat(known_org, view(extra_org, :, good_))
-      known_unf = hcat(known_unf, view(extra_unf, :, good_))
-      ids_to_unf = Int.(union(ids, view(extra_ids, bad_)))
-    end
-
-    # unfold points
-    initguess = view(unf, :, ids_to_unf)
-    chunk_to_unf = view(to_unf, :, ids_to_unf)
-    unf[:, ids_to_unf] .= opt(known_org, known_unf, chunk_to_unf, opars.search, opars.neigh, initguess)
-  end
+  
+  # unfold other pts
+  displ = unf_ref .- ref
+	ttab = georef((I=displ[1,:], J=displ[2,:], K=displ[3,:],
+	               x=ref[1,:], y=ref[2,:], z=ref[3,:]), (:x,:y,:z))
+  
+  dom = georef((x=to_unf[1,:], y=to_unf[2,:], z=to_unf[3,:]), (:x,:y,:z))
+  dom = domain(dom)
+	
+	# displacement
+	uvw = mapreduce(hcat, [:I,:J,:K]) do ev
+		ttab |> Select(ev) |> InterpolateNeighbors(dom, model=IDW(1), maxneighbors=40)
+	end |> values
+	
+  unf = to_unf .+ [uvw.I uvw.J uvw.K]'
   unf
 end
 
@@ -181,6 +142,27 @@ function unfold(to_unf::AbstractVector, ref::AbstractMatrix, unf_ref::AbstractMa
   j_ = cumsum(size.(to_unf, 2))
   i_ = [i == 1 ? 1 : j_[i - 1] + 1 for i in 1:length(j_)]
   [unf[:, i:j] for (i, j) in zip(i_, j_)]
+end
+
+function unfold(ref::AbstractMatrix; isomap=:default)
+
+  # read isomap and optim parameters or assign the defaults below
+  ipars = (search=:knn, neigh=16, anchors=1500, reftol=0.01, align_axis=:x)
+
+  ipars = updatepars(ipars, isomap)
+
+  # conversions if necessary
+  !(ref[1] isa Float64) && (ref = Float64.(ref))
+
+  # random seed
+  Random.seed!(1234567890)
+
+  # pre-process reference points
+  ref = remove_duplicates(ref, tol=ipars.reftol)
+
+  # do landmark isomap at reference points
+  unf_ref = landmark_isomap(ref, ipars.search, ipars.neigh, ipars.anchors, ipars.align_axis)
+  ref, unf_ref
 end
 
 function updatepars(default, newpars)

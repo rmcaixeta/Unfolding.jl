@@ -1,6 +1,6 @@
 
 """
-	landmark_isomap(coords, search=:knn, neigh=16, anchors=1500)
+	landmark_isomap(coords, search=:knn, neigh=16, anchors=1500, align_axis=:x)
 
 This function runs Landmark Isomap at 3-D points and returns a coordinate matrix
 with the unfolded points.
@@ -13,8 +13,9 @@ with the unfolded points.
 * `neigh`   - number of neighbors (for `search`=:knn) or radius
   distance (for `search`=:radius) to build neighbors graph for Isomap.
 * `anchors` - number of anchors/landmark points for the dimensionality reduction.
+* `align_axis` - make :x or :y unfolded axis correlate well with original one
 """
-function landmark_isomap(coords::AbstractMatrix, search=:knn, neigh=16, anchors=1500)
+function landmark_isomap(coords::AbstractMatrix, search::Symbol=:knn, neigh::Int=16, anchors::Int=1500, align_axis::Symbol=:x)
   n, dim = size(coords, 2), 2
   n < anchors && (anchors = n)
 
@@ -37,7 +38,7 @@ function landmark_isomap(coords::AbstractMatrix, search=:knn, neigh=16, anchors=
     M = fit(MDS, ADM, maxoutdim=dim, distances=true)
     tcoords = vcat(transform(M), zeros(1, n))
   end
-  tcoords
+  realign_mds(tcoords, coords)
 end
 
 function graph_and_anchors(ref_coords, nhood, neigh_val, nanchors)
@@ -97,4 +98,25 @@ end
 function triangulation(g::SimpleWeightedGraph, i, j, M1, M3)
   M2 = dijkstra_shortest_paths(g, i).dists[j] .^ 2
   vcat(-0.5 * M1 * (M2 - M3), 0)
+end
+
+function realign_mds(xyz_embed::AbstractMatrix, xy_orig::AbstractMatrix; align_axis::Symbol=:x)
+  ref_axis = align_axis == :x ? 1 : 2
+	true_ref = xy_orig[ref_axis,:]
+  xy_embed = xyz_embed[1:2,:]
+
+  # Rotate points by given angle (CCW)
+  rotate_2d(points, angle) = [
+      cos(angle) -sin(angle);
+      sin(angle)  cos(angle)
+  ] * points
+  
+  function objective(a)
+      xy_rot = rotate_2d(xy_embed, a)
+      -cor(xy_rot[ref_axis,:], true_ref)
+  end
+
+  res = optimize(objective, -π, π, Brent())
+  best_angle = Optim.minimizer(res)
+  vcat(rotate_2d(xy_embed, best_angle), zeros(1, length(true_ref)))
 end

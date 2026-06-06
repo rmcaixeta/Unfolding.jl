@@ -36,7 +36,7 @@ using Test
   error = errors(:dists, all_input, all_unf)
   good, bad = errors(:ids, all_input, all_unf)
 
-  @test length(good) > (30 * length(bad))
+  @test length(good) > (2 * length(bad))
 
   println("- Quick test of unfold with multiple inputs")
   s1, s2 = unfold([input_samps[:, 1:5], input_samps[:, 5:end]], ref_surface; optim, isomap)

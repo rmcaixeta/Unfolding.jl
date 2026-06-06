@@ -4,6 +4,9 @@ using Clustering: dbscan
 using DelimitedFiles
 using Distances
 using ImageMorphology: thinning
+using GeoStatsModels: IDW
+using GeoStatsTransforms: InterpolateNeighbors
+using GeoTables: domain, georef
 using Graphs: connected_components, dijkstra_shortest_paths
 using LinearAlgebra: Diagonal, Symmetric, cross, dot, eigen
 using MultivariateStats: MDS, PCA, dmat2gram, fit, projection, transform
@@ -12,7 +15,8 @@ using Optim
 using Random
 using Setfield
 using SimpleWeightedGraphs
-using StatsBase: Weights, mean, mean!, quantile, sample
+using StatsBase: Weights, cor, mean, mean!, quantile, sample
+using TableTransforms: Select
 using WriteVTK
 
 include("coords_optimization.jl")
